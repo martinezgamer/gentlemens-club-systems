@@ -799,6 +799,168 @@ export default function Tasks() {
           </DialogContent>
         </Dialog>
 
+        {/* Edit Task Dialog */}
+        <Dialog open={!!editingTask} onOpenChange={(open) => !open && setEditingTask(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Edit3 className="w-5 h-5" />
+                Edit Task
+              </DialogTitle>
+            </DialogHeader>
+            
+            {editingTask && (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Task Title</label>
+                  <Input
+                    placeholder="Enter task title..."
+                    value={editingTask.title}
+                    onChange={(e) => setEditingTask(prev => prev ? ({ ...prev, title: e.target.value }) : null)}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Description</label>
+                  <Textarea
+                    placeholder="Describe the task in detail..."
+                    value={editingTask.description || ""}
+                    onChange={(e) => setEditingTask(prev => prev ? ({ ...prev, description: e.target.value }) : null)}
+                    rows={3}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Assign To</label>
+                    <Select value={editingTask.assignedTo || ""} onValueChange={(value) => setEditingTask(prev => prev ? ({ ...prev, assignedTo: value }) : null)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select staff member" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {staff.map((staffMember: User) => (
+                          <SelectItem key={staffMember.id} value={staffMember.id}>
+                            {staffMember.firstName} {staffMember.lastName} - {staffMember.role}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Priority</label>
+                    <Select value={editingTask.priority} onValueChange={(value) => setEditingTask(prev => prev ? ({ ...prev, priority: value as any }) : null)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="urgent">Urgent</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Status</label>
+                    <Select value={editingTask.status} onValueChange={(value) => setEditingTask(prev => prev ? ({ ...prev, status: value as any }) : null)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Category</label>
+                    <Input
+                      placeholder="e.g., cleaning, maintenance, inventory"
+                      value={editingTask.category || ""}
+                      onChange={(e) => setEditingTask(prev => prev ? ({ ...prev, category: e.target.value }) : null)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Estimated Time (minutes)</label>
+                    <Input
+                      type="number"
+                      placeholder="30"
+                      value={editingTask.estimatedTime || 30}
+                      onChange={(e) => setEditingTask(prev => prev ? ({ ...prev, estimatedTime: parseInt(e.target.value) || 30 }) : null)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Due Date</label>
+                    <Input
+                      type="datetime-local"
+                      value={editingTask.dueDate ? new Date(editingTask.dueDate).toISOString().slice(0, 16) : ""}
+                      onChange={(e) => setEditingTask(prev => prev ? ({ ...prev, dueDate: e.target.value }) : null)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Tags (comma-separated)</label>
+                  <Input
+                    placeholder="cleaning, urgent, maintenance"
+                    value={editingTask.tags || ""}
+                    onChange={(e) => setEditingTask(prev => prev ? ({ ...prev, tags: e.target.value }) : null)}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Notes</label>
+                  <Textarea
+                    placeholder="Add any additional notes..."
+                    value={editingTask.notes || ""}
+                    onChange={(e) => setEditingTask(prev => prev ? ({ ...prev, notes: e.target.value }) : null)}
+                    rows={2}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setEditingTask(null)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      if (editingTask) {
+                        const updates = {
+                          title: editingTask.title,
+                          description: editingTask.description,
+                          assignedTo: editingTask.assignedTo,
+                          priority: editingTask.priority,
+                          status: editingTask.status,
+                          category: editingTask.category,
+                          estimatedTime: editingTask.estimatedTime,
+                          dueDate: editingTask.dueDate ? new Date(editingTask.dueDate).toISOString() : null,
+                          tags: editingTask.tags ? editingTask.tags.split(',').map(t => t.trim()) : [],
+                          notes: editingTask.notes
+                        };
+                        updateTaskMutation.mutate({ id: editingTask.id, updates });
+                      }
+                    }}
+                    disabled={!editingTask?.title.trim()}
+                  >
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
         {/* AI Insights Dialog */}
         <Dialog open={aiInsightsOpen} onOpenChange={setAiInsightsOpen}>
           <DialogContent className="max-w-4xl">
