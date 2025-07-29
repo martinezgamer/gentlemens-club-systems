@@ -529,6 +529,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Chat Assistant Endpoint
+  app.post('/api/ai/chat', isAuthenticated, async (req, res) => {
+    try {
+      const { message, context } = req.body;
+      
+      // Enhanced AI chat that can handle various club management queries
+      const response = await aiService.processChatMessage(message, context);
+      res.json(response);
+    } catch (error) {
+      console.error("AI chat error:", error);
+      res.status(500).json({ message: "Failed to process chat message" });
+    }
+  });
+
+  // Real-time AI Insights Endpoint
+  app.get('/api/ai/live-insights', isAuthenticated, async (req, res) => {
+    try {
+      const insights = await aiService.getLiveInsights();
+      res.json(insights);
+    } catch (error) {
+      console.error("Live insights error:", error);
+      res.status(500).json({ message: "Failed to get live insights" });
+    }
+  });
+
   // Create HTTP server
   const httpServer = createServer(app);
 

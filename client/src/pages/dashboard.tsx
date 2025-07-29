@@ -9,6 +9,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import Header from "@/components/header";
 import { AIInsightsDashboard } from "@/components/ai-insights-dashboard";
+import { AIChatAssistant } from "@/components/ai-chat-assistant";
+import { AILiveMetrics } from "@/components/ai-live-metrics";
+import { AISmartNotifications } from "@/components/ai-smart-notifications";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -42,6 +45,7 @@ export default function Dashboard() {
   return (
     <>
       <Header title="Dashboard" />
+      <AISmartNotifications />
       <div className="space-y-6 lg:space-y-8">
         {/* Welcome Section */}
         <div className="bg-gradient-to-r from-primary to-blue-600 rounded-2xl p-4 lg:p-6 text-white">
@@ -197,7 +201,15 @@ export default function Dashboard() {
         </div>
 
         {/* AI Intelligence Center */}
-        <AIInsightsDashboard className="lg:col-span-2" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+          <div className="lg:col-span-2">
+            <AIInsightsDashboard />
+          </div>
+          <div className="lg:col-span-1 space-y-4">
+            <AIChatAssistant />
+            <AILiveMetrics />
+          </div>
+        </div>
 
         {/* Quick Actions */}
         <Card>
