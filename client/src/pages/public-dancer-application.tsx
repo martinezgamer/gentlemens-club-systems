@@ -228,8 +228,8 @@ export default function PublicDancerApplication() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="club_1">Main Location - Downtown</SelectItem>
-                            <SelectItem value="club_2">Second Location - Uptown</SelectItem>
+                            <SelectItem value="wiggles_gentlemens_club">Wiggles Gentlemen's Club</SelectItem>
+                            <SelectItem value="fantasy_gentlemens_club">Fantasy Gentlemen's Club</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />

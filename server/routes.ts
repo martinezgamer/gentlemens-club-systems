@@ -1003,6 +1003,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Change club location for dancer application
+  app.put('/api/dancer-applications/:id/change-location', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { clubLocation } = req.body;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Check if user has permission to change locations
+      const allowedRoles = ['superuser', 'manager', 'house_mom', 'house_dad'];
+      if (!user || !allowedRoles.includes(user.role as string)) {
+        return res.status(403).json({ message: "Access denied. Insufficient permissions." });
+      }
+
+      const result = await storage.updateDancerApplicationStatus(
+        id, 
+        'pending', // Keep current status
+        userId, 
+        `Club location changed to ${clubLocation}`
+      );
+      
+      // Update the club location specifically
+      await storage.updateDancerApplication(id, { clubLocation });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error changing club location:", error);
+      res.status(500).json({ message: "Failed to change club location" });
+    }
+  });
+
   // Notification routes
   app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
     try {

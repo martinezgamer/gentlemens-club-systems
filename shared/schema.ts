@@ -43,8 +43,8 @@ export const userRoleEnum = pgEnum("user_role", [
 ]);
 
 export const clubLocationEnum = pgEnum("club_location", [
-  "club_1",
-  "club_2"
+  "wiggles_gentlemens_club",
+  "fantasy_gentlemens_club"
 ]);
 
 export const applicationStatusEnum = pgEnum("application_status", [

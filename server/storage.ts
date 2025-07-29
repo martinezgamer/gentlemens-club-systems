@@ -114,6 +114,7 @@ export interface IStorage {
   getDancerApplications(clubLocation?: string): Promise<DancerApplication[]>;
   getDancerApplicationById(id: string): Promise<DancerApplication | undefined>;
   updateDancerApplicationStatus(id: string, status: string, reviewedBy: string, notes?: string): Promise<DancerApplication>;
+  updateDancerApplication(id: string, updates: Partial<DancerApplication>): Promise<DancerApplication>;
   getActiveDancers(clubLocation?: string): Promise<DancerApplication[]>;
   getInactiveDancers(clubLocation?: string): Promise<DancerApplication[]>;
 
@@ -604,6 +605,17 @@ export class DatabaseStorage implements IStorage {
         status: status as any,
         reviewedBy,
         notes,
+        updatedAt: new Date(),
+      })
+      .where(eq(dancerApplications.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateDancerApplication(id: string, updates: Partial<DancerApplication>): Promise<DancerApplication> {
+    const [result] = await db.update(dancerApplications)
+      .set({
+        ...updates,
         updatedAt: new Date(),
       })
       .where(eq(dancerApplications.id, id))

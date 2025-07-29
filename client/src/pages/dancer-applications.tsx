@@ -67,8 +67,8 @@ interface DancerApplication {
 }
 
 const clubLabels = {
-  club_1: "Main Location - Downtown",
-  club_2: "Second Location - Uptown"
+  wiggles_gentlemens_club: "Wiggles Gentlemen's Club",
+  fantasy_gentlemens_club: "Fantasy Gentlemen's Club"
 };
 
 const statusLabels = {
@@ -213,6 +213,46 @@ export default function DancerApplications() {
     }
     return `${dancer.firstName} ${dancer.lastName}`;
   };
+
+  const getClubBadge = (location: string) => {
+    const clubs = {
+      'wiggles_gentlemens_club': { name: 'Wiggles', color: 'bg-purple-100 text-purple-800' },
+      'fantasy_gentlemens_club': { name: 'Fantasy', color: 'bg-pink-100 text-pink-800' }
+    };
+    
+    const club = clubs[location as keyof typeof clubs] || { name: location, color: 'bg-gray-100 text-gray-800' };
+    return (
+      <Badge className={`${club.color} text-xs`}>
+        {club.name}
+      </Badge>
+    );
+  };
+
+  // Change club location for a dancer application
+  const changeClubLocation = useMutation({
+    mutationFn: async ({ id, newLocation }: { id: string; newLocation: string }) => {
+      return await apiRequest(`/api/dancer-applications/${id}/change-location`, {
+        method: 'PUT',
+        body: JSON.stringify({ clubLocation: newLocation })
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/dancer-applications'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dancers/active'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dancers/inactive'] });
+      toast({
+        title: "Location Updated",
+        description: "Club location has been changed successfully."
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to change club location",
+        variant: "destructive"
+      });
+    }
+  });
 
   const pendingApplications = applications.filter((app: DancerApplication) => 
     ['pending', 'interview_scheduled', 'background_check'].includes(app.status)
