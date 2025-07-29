@@ -1229,6 +1229,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/lineup/current/:clubLocation', isAuthenticated, async (req: any, res) => {
+    try {
+      const { clubLocation } = req.params;
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Check if user has access to this club
+      if (user.role !== 'superuser' && user.clubLocation !== clubLocation) {
+        return res.status(403).json({ message: "Access denied to this club location" });
+      }
+
+      const lineup = await storage.getCurrentDancersByClub(clubLocation);
+      res.json(lineup);
+    } catch (error) {
+      console.error("Error fetching current dancers:", error);
+      res.status(500).json({ message: "Failed to fetch current dancers" });
+    }
+  });
+
   app.post('/api/lineup', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);

@@ -43,7 +43,7 @@ import {
   type InsertNotification,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, gte, lte, desc, count, sum, isNull, ne, sql } from "drizzle-orm";
+import { eq, and, or, gte, lte, desc, count, sum, isNull, ne, sql, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 // Interface for storage operations
@@ -243,13 +243,9 @@ export class DatabaseStorage implements IStorage {
     content: string; 
     isPrivate?: boolean; 
     createdBy: string; 
-    clubLocation: string; 
+    clubLocation: "wiggles_gentlemens_club" | "fantasy_gentlemens_club"; 
   }) {
-    const [result] = await db.insert(staffNotes).values({
-      ...note,
-      id: sql`gen_random_uuid()`,
-      createdAt: new Date()
-    }).returning();
+    const [result] = await db.insert(staffNotes).values(note).returning();
     return result;
   }
 
@@ -272,7 +268,7 @@ export class DatabaseStorage implements IStorage {
     const query = db.select().from(dancers);
     
     if (clubLocation) {
-      return await query.where(and(eq(dancers.clubLocation, clubLocation), eq(dancers.isActive, true))).orderBy(dancers.stageName);
+      return await query.where(and(sql`${dancers.clubLocation} = ${clubLocation}`, eq(dancers.isActive, true))).orderBy(dancers.stageName);
     }
     
     return await query.where(eq(dancers.isActive, true)).orderBy(dancers.stageName);
@@ -310,10 +306,40 @@ export class DatabaseStorage implements IStorage {
         and(
           gte(dancerLineup.date, today),
           lte(dancerLineup.date, tomorrow),
-          clubLocation ? eq(dancerLineup.clubLocation, clubLocation) : sql`true`
+          clubLocation ? sql`${dancerLineup.clubLocation} = ${clubLocation}` : sql`true`
         )
       )
       .orderBy(dancerLineup.shiftType, dancerLineup.stageOrder);
+
+    const results = await query;
+    return results.map(result => ({
+      ...result.dancer_lineup,
+      dancer: result.dancers!
+    }));
+  }
+
+  async getCurrentDancersByClub(clubLocation: string): Promise<(SelectDancerLineup & { dancer: SelectDancer })[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const query = db.select()
+      .from(dancerLineup)
+      .leftJoin(dancers, eq(dancerLineup.dancerId, dancers.id))
+      .where(
+        and(
+          sql`${dancerLineup.clubLocation} = ${clubLocation}`,
+          gte(dancerLineup.date, today),
+          lte(dancerLineup.date, tomorrow),
+          or(
+            eq(dancerLineup.status, 'checked_in'),
+            eq(dancerLineup.status, 'on_stage'),
+            eq(dancerLineup.status, 'break')
+          )
+        )
+      )
+      .orderBy(dancerLineup.stageOrder);
 
     const results = await query;
     return results.map(result => ({
@@ -335,7 +361,7 @@ export class DatabaseStorage implements IStorage {
         and(
           gte(dancerLineup.date, startOfDay),
           lte(dancerLineup.date, endOfDay),
-          clubLocation ? eq(dancerLineup.clubLocation, clubLocation) : sql`true`
+          clubLocation ? sql`${dancerLineup.clubLocation} = ${clubLocation}` : sql`true`
         )
       )
       .orderBy(dancerLineup.shiftType, dancerLineup.stageOrder);

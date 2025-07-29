@@ -12,6 +12,7 @@ import { AIInsightsDashboard } from "@/components/ai-insights-dashboard";
 import { AIChatAssistant } from "@/components/ai-chat-assistant";
 import { AILiveMetrics } from "@/components/ai-live-metrics";
 import { AISmartNotifications } from "@/components/ai-smart-notifications";
+import CurrentDancersCard from "@/components/current-dancers-card";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -142,8 +143,8 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Current Staff and Recent Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        {/* Current Staff and Dancers Lineup */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
           {/* Current Staff Table */}
           <Card>
             <CardHeader className="pb-3 lg:pb-6">
@@ -195,25 +196,11 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Recent Activity Feed */}
-          <Card>
-            <CardHeader className="pb-3 lg:pb-6">
-              <CardTitle className="text-lg lg:text-xl">Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="space-y-3 lg:space-y-4">
-                <div className="flex items-start space-x-2 lg:space-x-3">
-                  <div className="w-2 h-2 bg-primary rounded-full mt-1.5 lg:mt-2 flex-shrink-0"></div>
-                  <div className="flex-1">
-                    <p className="text-xs lg:text-sm text-gray-900">
-                      System initialized and ready
-                    </p>
-                    <p className="text-xs text-gray-500">Just now</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Current Dancers - Fantasy */}
+          <CurrentDancersCard clubLocation="fantasy_gentlemens_club" />
+
+          {/* Current Dancers - Wiggles */}
+          <CurrentDancersCard clubLocation="wiggles_gentlemens_club" />
         </div>
 
         {/* AI Intelligence Center */}
