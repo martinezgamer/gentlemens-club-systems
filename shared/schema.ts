@@ -302,12 +302,65 @@ export const musicRequests = pgTable("music_requests", {
   djId: varchar("dj_id").references(() => users.id),
   songTitle: varchar("song_title").notNull(),
   artist: varchar("artist"),
+  album: varchar("album"),
+  genre: varchar("genre"),
   notes: text("notes"),
   scheduledTime: timestamp("scheduled_time"),
   isApproved: boolean("is_approved").default(false),
   isPlayed: boolean("is_played").default(false),
+  priority: integer("priority").default(5), // 1-10 scale
+  energyLevel: integer("energy_level").default(5), // 1-10 scale
   approvedAt: timestamp("approved_at"),
   playedAt: timestamp("played_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Playlists
+export const playlists = pgTable("playlists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  djId: varchar("dj_id").references(() => users.id).notNull(),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  isPublic: boolean("is_public").default(false),
+  clubLocation: clubLocationEnum("club_location").notNull(),
+  timeOfDay: varchar("time_of_day"), // "early_evening", "prime_time", "late_night"
+  energyProfile: varchar("energy_profile"), // "chill", "building", "peak", "cooldown"
+  totalDuration: integer("total_duration"), // minutes
+  trackCount: integer("track_count").default(0),
+  tags: text("tags").array(),
+  isAiGenerated: boolean("is_ai_generated").default(false),
+  aiGenerationParams: text("ai_generation_params"), // JSON string
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Playlist tracks
+export const playlistTracks = pgTable("playlist_tracks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  playlistId: varchar("playlist_id").references(() => playlists.id, { onDelete: "cascade" }).notNull(),
+  songTitle: varchar("song_title").notNull(),
+  artist: varchar("artist").notNull(),
+  album: varchar("album"),
+  genre: varchar("genre"),
+  duration: integer("duration"), // seconds
+  energyLevel: integer("energy_level").default(5), // 1-10 scale
+  order: integer("order").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Music analytics
+export const musicAnalytics = pgTable("music_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  trackTitle: varchar("track_title").notNull(),
+  artist: varchar("artist").notNull(),
+  genre: varchar("genre"),
+  playCount: integer("play_count").default(1),
+  clubLocation: clubLocationEnum("club_location").notNull(),
+  timeOfDay: varchar("time_of_day"),
+  crowdResponse: varchar("crowd_response"), // "positive", "neutral", "negative"
+  djId: varchar("dj_id").references(() => users.id),
+  lastPlayed: timestamp("last_played").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -589,6 +642,22 @@ export const insertMusicRequestSchema = createInsertSchema(musicRequests).omit({
   playedAt: true,
 });
 
+export const insertPlaylistSchema = createInsertSchema(playlists).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPlaylistTrackSchema = createInsertSchema(playlistTracks).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMusicAnalyticsSchema = createInsertSchema(musicAnalytics).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({
   id: true,
   createdAt: true,
@@ -666,6 +735,15 @@ export type InsertTask = z.infer<typeof insertTaskSchema>;
 
 export type MusicRequest = typeof musicRequests.$inferSelect;
 export type InsertMusicRequest = z.infer<typeof insertMusicRequestSchema>;
+
+export type Playlist = typeof playlists.$inferSelect;
+export type InsertPlaylist = z.infer<typeof insertPlaylistSchema>;
+
+export type PlaylistTrack = typeof playlistTracks.$inferSelect;
+export type InsertPlaylistTrack = z.infer<typeof insertPlaylistTrackSchema>;
+
+export type MusicAnalytics = typeof musicAnalytics.$inferSelect;
+export type InsertMusicAnalytics = z.infer<typeof insertMusicAnalyticsSchema>;
 
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;

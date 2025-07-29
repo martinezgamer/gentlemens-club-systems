@@ -620,6 +620,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/music-requests/:id', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteMusicRequest(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting music request:", error);
+      res.status(500).json({ message: "Failed to delete music request" });
+    }
+  });
+
+  // AI Music Routes
+  app.post('/api/music/ai/generate-playlist', isAuthenticated, async (req: any, res) => {
+    try {
+      const { generateSmartPlaylist } = await import('./ai-music-service');
+      const params = req.body;
+      const playlist = await generateSmartPlaylist(params);
+      res.json(playlist);
+    } catch (error) {
+      console.error("Error generating AI playlist:", error);
+      res.status(500).json({ message: "Failed to generate playlist" });
+    }
+  });
+
+  app.get('/api/music/ai/analyze-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const { analyzeMusicRequests } = await import('./ai-music-service');
+      const requests = await storage.getAllMusicRequests();
+      const analysis = await analyzeMusicRequests(requests);
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error analyzing music requests:", error);
+      res.status(500).json({ message: "Failed to analyze requests" });
+    }
+  });
+
+  app.post('/api/music/ai/prioritize-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const { prioritizeMusicRequests } = await import('./ai-music-service');
+      const { requests, djPreferences } = req.body;
+      const prioritization = await prioritizeMusicRequests(requests, djPreferences);
+      res.json(prioritization);
+    } catch (error) {
+      console.error("Error prioritizing music requests:", error);
+      res.status(500).json({ message: "Failed to prioritize requests" });
+    }
+  });
+
+  app.post('/api/music/ai/suggestions', isAuthenticated, async (req: any, res) => {
+    try {
+      const { generateMusicSuggestions } = await import('./ai-music-service');
+      const params = req.body;
+      const suggestions = await generateMusicSuggestions(params);
+      res.json(suggestions);
+    } catch (error) {
+      console.error("Error generating music suggestions:", error);
+      res.status(500).json({ message: "Failed to generate suggestions" });
+    }
+  });
+
+  // Playlist Routes
+  app.post('/api/playlists', isAuthenticated, async (req: any, res) => {
+    try {
+      const djId = req.user.claims.sub;
+      const data = { ...req.body, djId };
+      const playlist = await storage.createPlaylist(data);
+      res.json(playlist);
+    } catch (error) {
+      console.error("Error creating playlist:", error);
+      res.status(500).json({ message: "Failed to create playlist" });
+    }
+  });
+
+  app.get('/api/playlists', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const djId = user?.role === 'dj' ? userId : undefined;
+      const clubLocation = req.query.clubLocation as string;
+      
+      const playlists = await storage.getPlaylists(djId, clubLocation);
+      res.json(playlists);
+    } catch (error) {
+      console.error("Error fetching playlists:", error);
+      res.status(500).json({ message: "Failed to fetch playlists" });
+    }
+  });
+
+  app.get('/api/playlists/:id', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const playlist = await storage.getPlaylistWithTracks(id);
+      if (!playlist) {
+        return res.status(404).json({ message: "Playlist not found" });
+      }
+      res.json(playlist);
+    } catch (error) {
+      console.error("Error fetching playlist:", error);
+      res.status(500).json({ message: "Failed to fetch playlist" });
+    }
+  });
+
+  app.patch('/api/playlists/:id', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const playlist = await storage.updatePlaylist(id, updates);
+      res.json(playlist);
+    } catch (error) {
+      console.error("Error updating playlist:", error);
+      res.status(500).json({ message: "Failed to update playlist" });
+    }
+  });
+
+  app.delete('/api/playlists/:id', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deletePlaylist(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting playlist:", error);
+      res.status(500).json({ message: "Failed to delete playlist" });
+    }
+  });
+
+  app.post('/api/playlists/:id/tracks', isAuthenticated, async (req, res) => {
+    try {
+      const { id: playlistId } = req.params;
+      const trackData = { ...req.body, playlistId };
+      const track = await storage.addTrackToPlaylist(trackData);
+      res.json(track);
+    } catch (error) {
+      console.error("Error adding track to playlist:", error);
+      res.status(500).json({ message: "Failed to add track" });
+    }
+  });
+
+  app.delete('/api/playlist-tracks/:id', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.removeTrackFromPlaylist(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing track from playlist:", error);
+      res.status(500).json({ message: "Failed to remove track" });
+    }
+  });
+
+  app.post('/api/playlists/:id/reorder', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { trackOrders } = req.body;
+      await storage.reorderPlaylistTracks(id, trackOrders);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error reordering tracks:", error);
+      res.status(500).json({ message: "Failed to reorder tracks" });
+    }
+  });
+
+  // Music Analytics Routes
+  app.post('/api/music/analytics', isAuthenticated, async (req: any, res) => {
+    try {
+      const djId = req.user.claims.sub;
+      const data = { ...req.body, djId };
+      const analytics = await storage.recordMusicPlay(data);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error recording music play:", error);
+      res.status(500).json({ message: "Failed to record play" });
+    }
+  });
+
+  app.get('/api/music/analytics', isAuthenticated, async (req, res) => {
+    try {
+      const clubLocation = req.query.clubLocation as string;
+      const analytics = await storage.getMusicAnalytics(clubLocation);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching music analytics:", error);
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
   // Enhanced Staff management routes
   app.get('/api/staff', isAuthenticated, async (req: any, res) => {
     try {

@@ -6,6 +6,9 @@ import {
   messages,
   tasks,
   musicRequests,
+  playlists,
+  playlistTracks,
+  musicAnalytics,
   registrationTokens,
   activityLogs,
   vipRooms,
@@ -27,6 +30,12 @@ import {
   type InsertTask,
   type MusicRequest,
   type InsertMusicRequest,
+  type Playlist,
+  type InsertPlaylist,
+  type PlaylistTrack,
+  type InsertPlaylistTrack,
+  type MusicAnalytics,
+  type InsertMusicAnalytics,
   type RegistrationToken,
   type InsertRegistrationToken,
   type ActivityLog,
@@ -171,6 +180,21 @@ export interface IStorage {
   getMusicRequests(djId?: string): Promise<(MusicRequest & { requester: User; dj?: User })[]>;
   getAllMusicRequests(): Promise<MusicRequest[]>;
   updateMusicRequest(id: string, updates: Partial<MusicRequest>): Promise<MusicRequest>;
+  deleteMusicRequest(id: string): Promise<void>;
+
+  // Playlist operations
+  createPlaylist(playlist: InsertPlaylist): Promise<Playlist>;
+  getPlaylists(djId?: string, clubLocation?: string): Promise<Playlist[]>;
+  getPlaylistWithTracks(playlistId: string): Promise<(Playlist & { tracks: PlaylistTrack[] }) | null>;
+  updatePlaylist(id: string, updates: Partial<Playlist>): Promise<Playlist>;
+  deletePlaylist(id: string): Promise<void>;
+  addTrackToPlaylist(track: InsertPlaylistTrack): Promise<PlaylistTrack>;
+  removeTrackFromPlaylist(trackId: string): Promise<void>;
+  reorderPlaylistTracks(playlistId: string, trackOrders: { id: string; order: number }[]): Promise<void>;
+
+  // Music analytics operations
+  recordMusicPlay(analytics: InsertMusicAnalytics): Promise<MusicAnalytics>;
+  getMusicAnalytics(clubLocation?: string): Promise<MusicAnalytics[]>;
   
   // Activity log operations
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
@@ -1101,16 +1125,150 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllMusicRequests(): Promise<MusicRequest[]> {
-    return await db.select().from(musicRequests);
+    return await db.select().from(musicRequests).orderBy(desc(musicRequests.createdAt));
   }
 
   async updateMusicRequest(id: string, updates: Partial<MusicRequest>): Promise<MusicRequest> {
     const [result] = await db
       .update(musicRequests)
-      .set(updates)
+      .set({
+        ...updates,
+        ...(updates.isApproved && { approvedAt: new Date() }),
+        ...(updates.isPlayed && { playedAt: new Date() })
+      })
       .where(eq(musicRequests.id, id))
       .returning();
     return result;
+  }
+
+  async deleteMusicRequest(id: string): Promise<void> {
+    await db.delete(musicRequests).where(eq(musicRequests.id, id));
+  }
+
+  // Playlist operations
+  async createPlaylist(playlist: InsertPlaylist): Promise<Playlist> {
+    const [result] = await db.insert(playlists).values(playlist).returning();
+    return result;
+  }
+
+  async getPlaylists(djId?: string, clubLocation?: string): Promise<Playlist[]> {
+    const conditions = [];
+    if (djId) conditions.push(eq(playlists.djId, djId));
+    if (clubLocation) conditions.push(eq(playlists.clubLocation, clubLocation as any));
+    
+    const query = db.select().from(playlists);
+    const results = conditions.length > 0
+      ? await query.where(and(...conditions)).orderBy(desc(playlists.createdAt))
+      : await query.orderBy(desc(playlists.createdAt));
+    
+    return results;
+  }
+
+  async getPlaylistWithTracks(playlistId: string): Promise<(Playlist & { tracks: PlaylistTrack[] }) | null> {
+    const [playlist] = await db.select().from(playlists).where(eq(playlists.id, playlistId));
+    if (!playlist) return null;
+
+    const tracks = await db
+      .select()
+      .from(playlistTracks)
+      .where(eq(playlistTracks.playlistId, playlistId))
+      .orderBy(playlistTracks.order);
+
+    return { ...playlist, tracks };
+  }
+
+  async updatePlaylist(id: string, updates: Partial<Playlist>): Promise<Playlist> {
+    const [result] = await db
+      .update(playlists)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(playlists.id, id))
+      .returning();
+    return result;
+  }
+
+  async deletePlaylist(id: string): Promise<void> {
+    await db.delete(playlists).where(eq(playlists.id, id));
+  }
+
+  // Playlist track operations
+  async addTrackToPlaylist(track: InsertPlaylistTrack): Promise<PlaylistTrack> {
+    const [result] = await db.insert(playlistTracks).values(track).returning();
+    
+    // Update playlist track count
+    await db
+      .update(playlists)
+      .set({ 
+        trackCount: sql`${playlists.trackCount} + 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(playlists.id, track.playlistId));
+    
+    return result;
+  }
+
+  async removeTrackFromPlaylist(trackId: string): Promise<void> {
+    const [track] = await db.select().from(playlistTracks).where(eq(playlistTracks.id, trackId));
+    if (track) {
+      await db.delete(playlistTracks).where(eq(playlistTracks.id, trackId));
+      
+      // Update playlist track count
+      await db
+        .update(playlists)
+        .set({ 
+          trackCount: sql`${playlists.trackCount} - 1`,
+          updatedAt: new Date()
+        })
+        .where(eq(playlists.id, track.playlistId));
+    }
+  }
+
+  async reorderPlaylistTracks(playlistId: string, trackOrders: { id: string; order: number }[]): Promise<void> {
+    for (const { id, order } of trackOrders) {
+      await db
+        .update(playlistTracks)
+        .set({ order })
+        .where(eq(playlistTracks.id, id));
+    }
+  }
+
+  // Music analytics operations
+  async recordMusicPlay(analytics: InsertMusicAnalytics): Promise<MusicAnalytics> {
+    // Check if track already exists for this location and update play count
+    const [existing] = await db
+      .select()
+      .from(musicAnalytics)
+      .where(and(
+        eq(musicAnalytics.trackTitle, analytics.trackTitle),
+        eq(musicAnalytics.artist, analytics.artist),
+        eq(musicAnalytics.clubLocation, analytics.clubLocation)
+      ));
+
+    if (existing) {
+      const [result] = await db
+        .update(musicAnalytics)
+        .set({
+          playCount: (existing.playCount || 0) + 1,
+          lastPlayed: new Date(),
+          crowdResponse: analytics.crowdResponse,
+          djId: analytics.djId,
+          timeOfDay: analytics.timeOfDay
+        })
+        .where(eq(musicAnalytics.id, existing.id))
+        .returning();
+      return result;
+    } else {
+      const [result] = await db.insert(musicAnalytics).values(analytics).returning();
+      return result;
+    }
+  }
+
+  async getMusicAnalytics(clubLocation?: string): Promise<MusicAnalytics[]> {
+    const query = db.select().from(musicAnalytics);
+    const results = clubLocation
+      ? await query.where(eq(musicAnalytics.clubLocation, clubLocation as any)).orderBy(desc(musicAnalytics.playCount))
+      : await query.orderBy(desc(musicAnalytics.playCount));
+    
+    return results;
   }
 
   // Activity log operations
