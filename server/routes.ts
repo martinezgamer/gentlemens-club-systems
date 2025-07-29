@@ -228,16 +228,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/messages', isAuthenticated, async (req: any, res) => {
     try {
       const senderId = req.user.claims.sub;
-      const data = insertMessageSchema.parse({
-        ...req.body,
-        senderId,
-      });
+      const { subject, content, receiverId, recipientRole } = req.body;
       
-      const message = await storage.createMessage(data);
-      res.json(message);
+      if (recipientRole) {
+        // Group message by role - create individual messages for each user with that role
+        const users = await storage.getAllUsers();
+        const targetUsers = users.filter(user => user.role === recipientRole && user.id !== senderId);
+        
+        const messages = [];
+        for (const targetUser of targetUsers) {
+          const data = insertMessageSchema.parse({
+            subject,
+            content,
+            senderId,
+            receiverId: targetUser.id,
+            recipientRole,
+            status: 'delivered'
+          });
+          const message = await storage.createMessage(data);
+          messages.push(message);
+        }
+        
+        res.json({ success: true, messagesSent: messages.length });
+      } else {
+        // Individual message
+        const data = insertMessageSchema.parse({
+          subject,
+          content,
+          senderId,
+          receiverId,
+          status: 'delivered'
+        });
+        
+        const message = await storage.createMessage(data);
+        res.json(message);
+      }
     } catch (error) {
       console.error("Error creating message:", error);
       res.status(500).json({ message: "Failed to create message" });
+    }
+  });
+
+  // AI-powered announcement endpoint
+  app.post('/api/messages/ai-announcement', isAuthenticated, async (req: any, res) => {
+    try {
+      const senderId = req.user.claims.sub;
+      const { subject, content, targetRole } = req.body;
+      
+      // Use AI to enhance the announcement
+      const enhancedAnnouncement = await aiService.enhanceAnnouncement({
+        subject,
+        content,
+        targetRole,
+        senderRole: (await storage.getUser(senderId))?.role
+      });
+      
+      // Get target users
+      const users = await storage.getAllUsers();
+      const targetUsers = targetRole 
+        ? users.filter(user => user.role === targetRole && user.id !== senderId)
+        : users.filter(user => user.id !== senderId); // All users if no specific role
+      
+      const messages = [];
+      for (const targetUser of targetUsers) {
+        const data = insertMessageSchema.parse({
+          subject: enhancedAnnouncement.subject,
+          content: enhancedAnnouncement.content,
+          senderId,
+          receiverId: targetUser.id,
+          recipientRole: targetRole,
+          isAnnouncement: true,
+          status: 'delivered'
+        });
+        const message = await storage.createMessage(data);
+        messages.push(message);
+      }
+      
+      res.json({ 
+        success: true, 
+        messagesSent: messages.length,
+        enhancedContent: enhancedAnnouncement
+      });
+    } catch (error) {
+      console.error("Error creating AI announcement:", error);
+      res.status(500).json({ message: "Failed to create AI announcement" });
     }
   });
 
@@ -271,6 +345,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error marking message as read:", error);
       res.status(500).json({ message: "Failed to mark message as read" });
+    }
+  });
+
+  // Message sentiment analysis for AI insights
+  app.get('/api/messages/sentiment-analysis', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Only allow management roles to access sentiment analysis
+      if (!['owner', 'manager', 'house_mom', 'house_dad'].includes(user?.role || '')) {
+        return res.status(403).json({ message: 'Insufficient permissions' });
+      }
+      
+      const messages = await storage.getAllMessages();
+      const analysis = await aiService.analyzeMessageSentiment(messages);
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error analyzing message sentiment:", error);
+      res.status(500).json({ message: "Failed to analyze message sentiment" });
     }
   });
 

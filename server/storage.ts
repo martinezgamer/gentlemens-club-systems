@@ -30,7 +30,7 @@ import {
   type VipRoom,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, gte, lte, desc, count, sum, isNull } from "drizzle-orm";
+import { eq, and, or, gte, lte, desc, count, sum, isNull, ne, sql } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -361,6 +361,18 @@ export class DatabaseStorage implements IStorage {
       .where(eq(messages.id, id))
       .returning();
     return result;
+  }
+
+  async getUnreadMessagesCount(userId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(messages)
+      .where(and(
+        eq(messages.receiverId, userId),
+        ne(messages.status, 'read')
+      ));
+    
+    return result[0]?.count || 0;
   }
 
   // Task operations

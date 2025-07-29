@@ -360,61 +360,7 @@ export async function prioritizeTasks(tasks: any[]): Promise<{
   }
 }
 
-// AI-Powered Message Sentiment Analysis
-export async function analyzeMessageSentiment(messages: any[]): Promise<{
-  sentimentScores: { [messageId: string]: number };
-  insights: string[];
-  flaggedMessages: any[];
-  communicationTips: string[];
-}> {
-  try {
-    const prompt = `
-    Analyze message sentiment and communication patterns:
-    
-    Messages: ${JSON.stringify(messages, null, 2)}
-    
-    Provide:
-    1. Sentiment scores (1-5 scale)
-    2. Communication insights
-    3. Messages requiring attention
-    4. Improvement suggestions
-    `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "object",
-          properties: {
-            sentimentScores: { 
-              type: "object",
-              properties: {
-                overall: { type: "number" },
-                staff: { type: "number" },
-                management: { type: "number" }
-              }
-            },
-            insights: { type: "array", items: { type: "string" } },
-            flaggedMessages: { type: "array", items: { type: "object" } },
-            communicationTips: { type: "array", items: { type: "string" } }
-          }
-        }
-      },
-      contents: prompt
-    });
-
-    return JSON.parse(response.text || "{}");
-  } catch (error) {
-    console.error("AI Message analysis error:", error);
-    return {
-      sentimentScores: {},
-      insights: ["AI message analysis temporarily unavailable"],
-      flaggedMessages: [],
-      communicationTips: []
-    };
-  }
-}
 
 // AI-Powered Business Intelligence Dashboard
 export async function generateBusinessIntelligence(allData: {
@@ -667,6 +613,140 @@ export async function getLiveInsights(): Promise<{
         customer_satisfaction: 88,
         revenue_optimization: 76
       }
+    };
+  }
+}
+
+// AI-powered announcement enhancement
+export async function enhanceAnnouncement(data: {
+  subject: string;
+  content: string;
+  targetRole?: string;
+  senderRole?: string;
+}) {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    
+    const prompt = `As an AI assistant for a professional entertainment venue, enhance this announcement for optimal communication:
+
+    ORIGINAL ANNOUNCEMENT:
+    Subject: ${data.subject}
+    Content: ${data.content}
+    
+    TARGET AUDIENCE: ${data.targetRole || 'All Staff'}
+    SENDER ROLE: ${data.senderRole || 'Management'}
+    
+    Please enhance this announcement by:
+    1. Making the subject line more engaging and clear
+    2. Improving the tone to be professional yet approachable
+    3. Adding urgency indicators if appropriate
+    4. Ensuring clarity and actionable information
+    5. Optimizing for the target audience
+    6. Adding timing context if relevant
+    
+    Return a JSON response with:
+    {
+      "subject": "enhanced subject line",
+      "content": "enhanced announcement content",
+      "urgency": "low|medium|high",
+      "timing_recommendation": "optimal timing suggestion",
+      "engagement_tips": ["tip1", "tip2"]
+    }`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    try {
+      const enhancedData = JSON.parse(text);
+      return {
+        subject: enhancedData.subject || data.subject,
+        content: enhancedData.content || data.content,
+        metadata: {
+          urgency: enhancedData.urgency || 'medium',
+          timing_recommendation: enhancedData.timing_recommendation,
+          engagement_tips: enhancedData.engagement_tips || []
+        }
+      };
+    } catch (parseError) {
+      console.log("AI announcement enhancement error, using original:", parseError);
+      return {
+        subject: data.subject,
+        content: data.content,
+        metadata: {
+          urgency: 'medium',
+          timing_recommendation: 'Send during business hours for maximum visibility',
+          engagement_tips: ['Follow up individually if response needed', 'Consider staff meeting discussion']
+        }
+      };
+    }
+
+  } catch (error: any) {
+    if (error.status !== 503) {
+      console.error("AI announcement enhancement error:", error);
+    }
+    
+    // Fallback: return original with basic enhancements
+    return {
+      subject: `📢 ${data.subject}`,
+      content: `${data.content}\n\n---\nThis message was sent to: ${data.targetRole || 'All Staff'}\nPlease acknowledge receipt when convenient.`,
+      metadata: {
+        urgency: 'medium',
+        timing_recommendation: 'Message optimized for current delivery',
+        engagement_tips: ['AI enhancement temporarily unavailable - using standard format']
+      }
+    };
+  }
+}
+
+// Message sentiment analysis for insights
+export async function analyzeMessageSentiment(messages: any[]) {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    
+    const recentMessages = messages.slice(0, 20); // Analyze last 20 messages
+    const messageText = recentMessages.map(m => `${m.subject}: ${m.content}`).join('\n');
+    
+    const prompt = `Analyze the sentiment and communication patterns in these workplace messages:
+
+    MESSAGES:
+    ${messageText}
+    
+    Provide analysis in JSON format:
+    {
+      "overall_sentiment": "positive|neutral|negative",
+      "communication_health": 1-100,
+      "key_themes": ["theme1", "theme2"],
+      "recommendations": ["rec1", "rec2"],
+      "urgent_attention_needed": boolean
+    }`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    try {
+      return JSON.parse(text);
+    } catch {
+      return {
+        overall_sentiment: "neutral",
+        communication_health: 75,
+        key_themes: ["Standard business communications"],
+        recommendations: ["Continue current communication practices"],
+        urgent_attention_needed: false
+      };
+    }
+
+  } catch (error: any) {
+    if (error.status !== 503) {
+      console.error("Message sentiment analysis error:", error);
+    }
+    return {
+      overall_sentiment: "neutral",
+      communication_health: 80,
+      key_themes: ["Analysis temporarily unavailable"],
+      recommendations: ["AI communication insights will resume shortly"],
+      urgent_attention_needed: false
     };
   }
 }
