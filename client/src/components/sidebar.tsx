@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Building, BarChart3, Calendar, Clock, DollarSign, MessageCircle, Music, CheckSquare, Users, FileText, Settings, Menu, X } from "lucide-react";
+import { Building, BarChart3, Calendar, Clock, DollarSign, MessageCircle, Music, CheckSquare, Users, FileText, Settings, Menu, X, TestTube } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,6 +17,7 @@ const navigation = [
   { name: "Tasks", href: "/tasks", icon: CheckSquare },
   { name: "Staff", href: "/staff", icon: Users },
   { name: "Reports", href: "/reports", icon: FileText },
+  { name: "Demo", href: "/demo", icon: TestTube },
 ];
 
 const superuserNavigation = [

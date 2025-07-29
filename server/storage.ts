@@ -783,20 +783,27 @@ export class DatabaseStorage implements IStorage {
     if (assignedTo) conditions.push(eq(tasks.assignedTo, assignedTo));
     if (status) conditions.push(eq(tasks.status, status as any));
     
+    const assigneeUsers = alias(users, 'assignee_users');
+    const creatorUsers = alias(users, 'creator_users');
+    
     const query = db
-      .select()
+      .select({
+        task: tasks,
+        assignee: assigneeUsers,
+        creator: creatorUsers
+      })
       .from(tasks)
-      .leftJoin(users, eq(tasks.assignedTo, users.id))
-      .leftJoin(users, eq(tasks.assignedBy, users.id));
+      .leftJoin(assigneeUsers, eq(tasks.assignedTo, assigneeUsers.id))
+      .leftJoin(creatorUsers, eq(tasks.assignedBy, creatorUsers.id));
     
     const results = conditions.length > 0
       ? await query.where(and(...conditions)).orderBy(desc(tasks.createdAt))
       : await query.orderBy(desc(tasks.createdAt));
     
     return results.map(row => ({
-      ...row.tasks,
-      assignee: row.users || undefined,
-      creator: row.users!
+      ...row.task,
+      assignee: row.assignee || undefined,
+      creator: row.creator!
     }));
   }
 

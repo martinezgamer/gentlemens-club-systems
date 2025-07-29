@@ -22,6 +22,7 @@ import Staff from "./pages/staff";
 import Reports from "./pages/reports";
 import Admin from "./pages/admin";
 import AdminSetup from "./pages/admin-setup";
+import Demo from "./pages/demo";
 import Layout from "./components/layout";
 import PublicDancerApplication from "./pages/public-dancer-application";
 
@@ -58,6 +59,7 @@ function Router() {
                 <Route path="/staff" component={Staff} />
                 <Route path="/reports" component={Reports} />
                 <Route path="/admin" component={Admin} />
+                <Route path="/demo" component={Demo} />
               </>
             ) : (
               <>
@@ -72,6 +74,7 @@ function Router() {
                 <Route path="/tasks" component={Tasks} />
                 <Route path="/staff" component={Staff} />
                 <Route path="/reports" component={Reports} />
+                <Route path="/demo" component={Demo} />
               </>
             )}
 
