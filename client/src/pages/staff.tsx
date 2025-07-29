@@ -205,17 +205,17 @@ export default function Staff() {
   return (
     <>
       <Header title="Staff Management" />
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Header Controls */}
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Users className="w-6 h-6" />
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6" />
               Staff Management
             </h1>
             {isSuperuser && (
               <Select value={selectedClub} onValueChange={setSelectedClub}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-full sm:w-48">
                   <SelectValue placeholder="Select club" />
                 </SelectTrigger>
                 <SelectContent>
@@ -226,14 +226,15 @@ export default function Staff() {
               </Select>
             )}
           </div>
-          <div className="flex gap-2">
-            <Button onClick={() => setNewStaffDialogOpen(true)} className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={() => setNewStaffDialogOpen(true)} className="flex items-center gap-2 text-sm">
               <UserPlus className="w-4 h-4" />
-              Invite Staff
+              <span className="hidden sm:inline">Invite Staff</span>
+              <span className="sm:hidden">Invite</span>
             </Button>
-            <Button variant="outline" className="flex items-center gap-2">
+            <Button variant="outline" className="flex items-center gap-2 text-sm">
               <Search className="w-4 h-4" />
-              Search
+              <span className="hidden sm:inline">Search</span>
             </Button>
           </div>
         </div>
@@ -254,7 +255,7 @@ export default function Staff() {
                   <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
                 </div>
               ) : aiInsights ? (
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   <div>
                     <h4 className="font-semibold mb-2 flex items-center gap-2">
                       <Star className="w-4 h-4" />
@@ -286,7 +287,7 @@ export default function Staff() {
         )}
 
         {/* Enhanced Staff Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="hover:shadow-lg transition-shadow duration-200">
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
@@ -368,40 +369,42 @@ export default function Staff() {
             ) : (
               <div className="space-y-4">
                 {staff.map((member: User) => (
-                  <div key={member.id} className="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+                  <div key={member.id} className="border rounded-lg p-3 sm:p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm sm:text-base flex-shrink-0">
                           {member.firstName[0]}{member.lastName[0]}
                         </div>
-                        <div>
-                          <h3 className="font-semibold">{member.firstName} {member.lastName}</h3>
-                          <p className="text-sm text-gray-600">{member.email}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline">{getRoleDisplayName(member.role)}</Badge>
-                            <Badge className={getClubBadgeColor(member.clubLocation)}>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-sm sm:text-base truncate">{member.firstName} {member.lastName}</h3>
+                          <p className="text-xs sm:text-sm text-gray-600 truncate">{member.email}</p>
+                          <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-1">
+                            <Badge variant="outline" className="text-xs">{getRoleDisplayName(member.role)}</Badge>
+                            <Badge className={`text-xs ${getClubBadgeColor(member.clubLocation)}`}>
                               {getClubDisplayName(member.clubLocation)}
                             </Badge>
                             {!member.isActive && (
-                              <Badge variant="destructive">Inactive</Badge>
+                              <Badge variant="destructive" className="text-xs">Inactive</Badge>
                             )}
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                         <Button 
                           variant="outline" 
                           size="sm"
                           onClick={() => setSelectedStaff(member)}
+                          className="p-2"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
                         </Button>
                         <Button 
                           variant="outline" 
                           size="sm"
                           onClick={() => setEditingStaff(member)}
+                          className="p-2"
                         >
-                          <Settings className="w-4 h-4" />
+                          <Settings className="w-3 h-3 sm:w-4 sm:h-4" />
                         </Button>
                         <Button 
                           variant="outline" 
@@ -410,8 +413,9 @@ export default function Staff() {
                             setSelectedStaff(member);
                             setNoteDialogOpen(true);
                           }}
+                          className="p-2"
                         >
-                          <FileText className="w-4 h-4" />
+                          <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
                         </Button>
                       </div>
                     </div>
@@ -424,7 +428,7 @@ export default function Staff() {
 
         {/* Edit Staff Dialog */}
         <Dialog open={!!editingStaff} onOpenChange={() => setEditingStaff(null)}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md mx-4 sm:mx-auto">
             <DialogHeader>
               <DialogTitle>Edit Staff Member</DialogTitle>
             </DialogHeader>
