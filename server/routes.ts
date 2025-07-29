@@ -336,7 +336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subject,
         content,
         targetRole,
-        senderRole: (await storage.getUser(senderId))?.role
+        senderRole: (await storage.getUser(senderId))?.role as string
       });
       
       // Get target users

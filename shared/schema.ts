@@ -285,8 +285,7 @@ export const insertDancerApplicationSchema = createInsertSchema(dancerApplicatio
 
 export const selectDancerApplicationSchema = createInsertSchema(dancerApplications);
 
-export type InsertDancerApplication = z.infer<typeof insertDancerApplicationSchema>;
-export type DancerApplication = typeof dancerApplications.$inferSelect;
+
 
 // Relations
 export const userRelations = relations(users, ({ many }) => ({
