@@ -64,7 +64,7 @@ export const applicationStatusEnum = pgEnum("application_status", [
 export const shiftTypeEnum = pgEnum("shift_type", ["day", "night"]);
 export const dancerStatusEnum = pgEnum("dancer_status", ["available", "working", "break", "vip", "unavailable"]);
 export const lineupStatusEnum = pgEnum("lineup_status", ["scheduled", "checked_in", "on_stage", "break", "checked_out"]);
-export const financialTypeEnum = pgEnum("financial_type", ["tips", "house_fee", "payout", "sale"]);
+export const financialTypeEnum = pgEnum("financial_type", ["tips", "house_fee", "payout", "sale", "paycheck", "personal_expense", "bonus", "overtime"]);
 export const taskStatusEnum = pgEnum("task_status", ["pending", "in_progress", "completed", "cancelled"]);
 export const taskPriorityEnum = pgEnum("task_priority", ["low", "medium", "high", "urgent"]);
 export const messageStatusEnum = pgEnum("message_status", ["sent", "delivered", "read"]);
@@ -227,7 +227,16 @@ export const timeClockEntries = pgTable("time_clock_entries", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Financial records
+// Personal expense categories
+export const expenseCategoryEnum = pgEnum("expense_category", [
+  "food", "transportation", "housing", "utilities", "entertainment", 
+  "shopping", "healthcare", "education", "savings", "other"
+]);
+
+// Pay frequency for paychecks  
+export const payFrequencyEnum = pgEnum("pay_frequency", ["weekly", "bi_weekly", "monthly"]);
+
+// Financial records - Enhanced for personal financial tracking
 export const financialRecords = pgTable("financial_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull(),
@@ -236,6 +245,13 @@ export const financialRecords = pgTable("financial_records", {
   shiftType: shiftTypeEnum("shift_type"),
   timeClockEntryId: varchar("time_clock_entry_id").references(() => timeClockEntries.id),
   description: text("description"),
+  // Personal financial tracking fields
+  category: expenseCategoryEnum("category"), // For personal expenses
+  payFrequency: payFrequencyEnum("pay_frequency"), // For paychecks
+  payPeriodStart: timestamp("pay_period_start"), // Start of pay period
+  payPeriodEnd: timestamp("pay_period_end"), // End of pay period
+  isPersonal: boolean("is_personal").default(false), // Personal vs work-related
+  tags: text("tags"), // JSON array for custom tags
   isVisible: boolean("is_visible").default(true), // for privacy controls
   createdAt: timestamp("created_at").defaultNow(),
 });

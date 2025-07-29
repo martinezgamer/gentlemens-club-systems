@@ -14,6 +14,7 @@ import DancerApplications from "./pages/dancer-applications";
 import Lineup from "./pages/lineup";
 import TimeClock from "./pages/timeclock";
 import Financial from "./pages/financial";
+import PersonalFinance from "./pages/personal-finance";
 import Schedule from "./pages/schedule";
 import Messages from "./pages/messages";
 import Music from "./pages/music";
@@ -52,6 +53,7 @@ function Router() {
                 <Route path="/lineup" component={Lineup} />
                 <Route path="/timeclock" component={TimeClock} />
                 <Route path="/financial" component={Financial} />
+                <Route path="/personal-finance" component={PersonalFinance} />
                 <Route path="/schedule" component={Schedule} />
                 <Route path="/messages" component={Messages} />
                 <Route path="/music" component={Music} />
@@ -68,6 +70,7 @@ function Router() {
                 <Route path="/lineup" component={Lineup} />
                 <Route path="/timeclock" component={TimeClock} />
                 <Route path="/financial" component={Financial} />
+                <Route path="/personal-finance" component={PersonalFinance} />
                 <Route path="/schedule" component={Schedule} />
                 <Route path="/messages" component={Messages} />
                 <Route path="/music" component={Music} />

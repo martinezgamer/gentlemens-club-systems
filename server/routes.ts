@@ -226,6 +226,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Personal Financial Tracking Endpoints
+  app.get('/api/financial/personal/summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const period = req.query.period as 'daily' | 'weekly' | 'bi_weekly' | 'monthly' || 'weekly';
+      const summary = await storage.getPersonalFinancialSummary(userId, period);
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching personal financial summary:", error);
+      res.status(500).json({ message: "Failed to fetch personal financial summary" });
+    }
+  });
+
+  app.get('/api/financial/personal/expenses-by-category', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const from = req.query.from ? new Date(req.query.from as string) : undefined;
+      const to = req.query.to ? new Date(req.query.to as string) : undefined;
+      const expenses = await storage.getPersonalExpensesByCategory(userId, from, to);
+      res.json(expenses);
+    } catch (error) {
+      console.error("Error fetching expenses by category:", error);
+      res.status(500).json({ message: "Failed to fetch expenses by category" });
+    }
+  });
+
   // Admin routes for user management
   app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
     try {

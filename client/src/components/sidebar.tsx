@@ -12,6 +12,8 @@ const navigation = [
   { name: "Lineup", href: "/lineup", icon: Calendar },
   { name: "Schedule", href: "/schedule", icon: Calendar },
   { name: "Time Clock", href: "/timeclock", icon: Clock },
+  { name: "Financial", href: "/financial", icon: DollarSign },
+  { name: "Personal Finance", href: "/personal-finance", icon: DollarSign },
   { name: "Messages", href: "/messages", icon: MessageCircle },
   { name: "Music Requests", href: "/music", icon: Music },
   { name: "Tasks", href: "/tasks", icon: CheckSquare },

@@ -564,6 +564,11 @@ export class DatabaseStorage implements IStorage {
     totalFees: number;
     totalPayouts: number;
     totalSales: number;
+    totalPaychecks: number;
+    totalPersonalExpenses: number;
+    totalBonus: number;
+    totalOvertime: number;
+    netEarnings: number;
   }> {
     const conditions = [];
     if (userId) conditions.push(eq(financialRecords.userId, userId));
@@ -592,12 +597,170 @@ export class DatabaseStorage implements IStorage {
       .from(financialRecords)
       .where(whereClause ? and(whereClause, eq(financialRecords.type, 'sale')) : eq(financialRecords.type, 'sale'));
     
+    const [paychecks] = await db
+      .select({ total: sum(financialRecords.amount) })
+      .from(financialRecords)
+      .where(whereClause ? and(whereClause, eq(financialRecords.type, 'paycheck')) : eq(financialRecords.type, 'paycheck'));
+    
+    const [personalExpenses] = await db
+      .select({ total: sum(financialRecords.amount) })
+      .from(financialRecords)
+      .where(whereClause ? and(whereClause, eq(financialRecords.type, 'personal_expense')) : eq(financialRecords.type, 'personal_expense'));
+    
+    const [bonus] = await db
+      .select({ total: sum(financialRecords.amount) })
+      .from(financialRecords)
+      .where(whereClause ? and(whereClause, eq(financialRecords.type, 'bonus')) : eq(financialRecords.type, 'bonus'));
+    
+    const [overtime] = await db
+      .select({ total: sum(financialRecords.amount) })
+      .from(financialRecords)
+      .where(whereClause ? and(whereClause, eq(financialRecords.type, 'overtime')) : eq(financialRecords.type, 'overtime'));
+    
+    const totalTips = Number(tips?.total || 0);
+    const totalFees = Number(fees?.total || 0);
+    const totalPayouts = Number(payouts?.total || 0);
+    const totalSales = Number(sales?.total || 0);
+    const totalPaychecks = Number(paychecks?.total || 0);
+    const totalPersonalExpenses = Number(personalExpenses?.total || 0);
+    const totalBonus = Number(bonus?.total || 0);
+    const totalOvertime = Number(overtime?.total || 0);
+    
+    const netEarnings = totalTips + totalSales + totalPaychecks + totalBonus + totalOvertime - totalFees - totalPersonalExpenses;
+    
     return {
-      totalTips: Number(tips?.total || 0),
-      totalFees: Number(fees?.total || 0),
-      totalPayouts: Number(payouts?.total || 0),
-      totalSales: Number(sales?.total || 0),
+      totalTips,
+      totalFees,
+      totalPayouts,
+      totalSales,
+      totalPaychecks,
+      totalPersonalExpenses,
+      totalBonus,
+      totalOvertime,
+      netEarnings,
     };
+  }
+
+  // Personal Financial Tracking Methods
+  async getPersonalFinancialSummary(userId: string, period: 'daily' | 'weekly' | 'bi_weekly' | 'monthly' = 'weekly'): Promise<{
+    periodStart: Date;
+    periodEnd: Date;
+    totalEarnings: number;
+    totalExpenses: number;
+    netIncome: number;
+    breakdown: {
+      tips: number;
+      paychecks: number;
+      bonus: number;
+      overtime: number;
+      personalExpenses: number;
+      workExpenses: number;
+    };
+    expensesByCategory: Record<string, number>;
+  }> {
+    // Calculate period dates
+    const now = new Date();
+    let periodStart: Date;
+    let periodEnd: Date = now;
+    
+    switch (period) {
+      case 'daily':
+        periodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case 'weekly':
+        const dayOfWeek = now.getDay();
+        periodStart = new Date(now.getTime() - (dayOfWeek * 24 * 60 * 60 * 1000));
+        periodStart.setHours(0, 0, 0, 0);
+        break;
+      case 'bi_weekly':
+        periodStart = new Date(now.getTime() - (14 * 24 * 60 * 60 * 1000));
+        periodStart.setHours(0, 0, 0, 0);
+        break;
+      case 'monthly':
+        periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      default:
+        periodStart = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+    }
+    
+    const records = await this.getFinancialRecords(userId, periodStart, periodEnd);
+    
+    const breakdown = {
+      tips: 0,
+      paychecks: 0,
+      bonus: 0,
+      overtime: 0,
+      personalExpenses: 0,
+      workExpenses: 0,
+    };
+    
+    const expensesByCategory: Record<string, number> = {};
+    
+    records.forEach(record => {
+      const amount = Number(record.amount);
+      
+      switch (record.type) {
+        case 'tips':
+          breakdown.tips += amount;
+          break;
+        case 'paycheck':
+          breakdown.paychecks += amount;
+          break;
+        case 'bonus':
+          breakdown.bonus += amount;
+          break;
+        case 'overtime':
+          breakdown.overtime += amount;
+          break;
+        case 'personal_expense':
+          breakdown.personalExpenses += amount;
+          if (record.category) {
+            expensesByCategory[record.category] = (expensesByCategory[record.category] || 0) + amount;
+          }
+          break;
+        case 'house_fee':
+          breakdown.workExpenses += amount;
+          break;
+      }
+    });
+    
+    const totalEarnings = breakdown.tips + breakdown.paychecks + breakdown.bonus + breakdown.overtime;
+    const totalExpenses = breakdown.personalExpenses + breakdown.workExpenses;
+    const netIncome = totalEarnings - totalExpenses;
+    
+    return {
+      periodStart,
+      periodEnd,
+      totalEarnings,
+      totalExpenses,
+      netIncome,
+      breakdown,
+      expensesByCategory,
+    };
+  }
+
+  async getPersonalExpensesByCategory(userId: string, from?: Date, to?: Date): Promise<Record<string, number>> {
+    const conditions = [
+      eq(financialRecords.userId, userId),
+      eq(financialRecords.type, 'personal_expense')
+    ];
+    
+    if (from) conditions.push(gte(financialRecords.createdAt, from));
+    if (to) conditions.push(lte(financialRecords.createdAt, to));
+    
+    const records = await db
+      .select()
+      .from(financialRecords)
+      .where(and(...conditions));
+    
+    const categories: Record<string, number> = {};
+    
+    records.forEach(record => {
+      const category = record.category || 'other';
+      categories[category] = (categories[category] || 0) + Number(record.amount);
+    });
+    
+    return categories;
   }
 
   async getAllFinancialRecords(): Promise<FinancialRecord[]> {
