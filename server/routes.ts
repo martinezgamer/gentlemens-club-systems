@@ -52,7 +52,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           firstName: 'Superuser',
           lastName: 'Admin',
           role: 'superuser',
-          clubLocation: 'club_1',
+          clubLocation: 'wiggles_gentlemens_club',
           isActive: true,
           profileCompleted: true,
         });
@@ -521,19 +521,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Staff management routes
+  // Enhanced Staff management routes
   app.get('/api/staff', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
+      const { clubLocation } = req.query;
       
-      // Only allow managers and owners to view all staff
-      if (user?.role !== 'owner' && user?.role !== 'manager') {
+      // Allow managers, owners, and superusers to view staff
+      if (!['owner', 'manager', 'superuser', 'house_mom', 'house_dad'].includes(user?.role || '')) {
         return res.status(403).json({ message: "Unauthorized" });
       }
       
-      const staff = await storage.getAllStaff();
-      res.json(staff);
+      // Superusers can view all clubs, others see their assigned club
+      if (user?.role === 'superuser') {
+        const staff = clubLocation ? await storage.getStaffByClub(clubLocation as string) : await storage.getAllStaff();
+        res.json(staff);
+      } else {
+        const staff = await storage.getStaffByClub(user?.clubLocation || undefined);
+        res.json(staff);
+      }
     } catch (error) {
       console.error("Error fetching staff:", error);
       res.status(500).json({ message: "Failed to fetch staff" });
@@ -545,19 +552,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      // Only allow managers and owners to update staff
-      if (user?.role !== 'owner' && user?.role !== 'manager') {
+      // Allow managers, owners, and superusers to update staff
+      if (!['owner', 'manager', 'superuser'].includes(user?.role || '')) {
         return res.status(403).json({ message: "Unauthorized" });
       }
       
       const { id } = req.params;
       const updates = req.body;
-      // For basic updates like role changes, we'll use the existing update method
-      const updatedUser = await storage.updateUserRole(id, updates.role || 'dancer');
+      
+      // Use comprehensive staff update method
+      const updatedUser = await storage.updateStaffDetails(id, updates);
       res.json(updatedUser);
     } catch (error) {
       console.error("Error updating staff:", error);
       res.status(500).json({ message: "Failed to update staff" });
+    }
+  });
+
+  app.post('/api/staff/notes', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!['owner', 'manager', 'superuser', 'house_mom', 'house_dad'].includes(user?.role || '')) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      const noteData = {
+        ...req.body,
+        createdBy: userId,
+      };
+      
+      const note = await storage.createStaffNote(noteData);
+      res.json(note);
+    } catch (error) {
+      console.error("Error creating staff note:", error);
+      res.status(500).json({ message: "Failed to create staff note" });
+    }
+  });
+
+  app.get('/api/staff/:id/notes', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const { id } = req.params;
+      
+      if (!['owner', 'manager', 'superuser', 'house_mom', 'house_dad'].includes(user?.role || '')) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      const notes = await storage.getStaffNotes(id);
+      res.json(notes);
+    } catch (error) {
+      console.error("Error fetching staff notes:", error);
+      res.status(500).json({ message: "Failed to fetch staff notes" });
+    }
+  });
+
+  app.get('/api/staff/ai-insights', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!['owner', 'manager', 'superuser'].includes(user?.role || '')) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      const allStaff = await storage.getAllStaff();
+      const timeClockEntries = await storage.getAllTimeClockEntries();
+      const financialRecords = await storage.getAllFinancialRecords();
+      
+      const staffWithData = allStaff.map(staff => ({
+        ...staff,
+        timeEntries: timeClockEntries.filter(entry => entry.userId === staff.id),
+        financialEntries: financialRecords.filter(record => record.userId === staff.id)
+      }));
+      
+      const aiService = await import('./ai-service');
+      const insights = await aiService.analyzeStaffPerformance(staffWithData);
+      res.json(insights);
+    } catch (error) {
+      console.error("Error generating staff insights:", error);
+      res.status(500).json({ message: "Failed to generate AI insights" });
     }
   });
 

@@ -50,6 +50,10 @@ export interface IStorage {
   // Staff management
   getAllStaff(): Promise<User[]>;
   updateUserRole(id: string, role: string): Promise<User>;
+  updateStaffDetails(id: string, updates: Partial<User>): Promise<User>;
+  getStaffByClub(clubLocation?: string): Promise<User[]>;
+  createStaffNote(note: { staffId: string; noteType: string; title: string; content: string; isPrivate?: boolean; createdBy: string; clubLocation: string; }): Promise<any>;
+  getStaffNotes(staffId?: string): Promise<any[]>;
   
   // Registration tokens
   createRegistrationToken(token: InsertRegistrationToken): Promise<RegistrationToken>;
@@ -179,16 +183,64 @@ export class DatabaseStorage implements IStorage {
 
   // Staff management
   async getAllStaff(): Promise<User[]> {
-    return await db.select().from(users).where(eq(users.id, users.id));
+    return await db.select().from(users).where(ne(users.role, 'dancer'));
   }
 
   async updateUserRole(id: string, role: string): Promise<User> {
     const [user] = await db
       .update(users)
-      .set({ role: role as any })
+      .set({ role: role as any, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
     return user;
+  }
+
+  async updateStaffDetails(id: string, updates: Partial<User>): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async getStaffByClub(clubLocation?: string): Promise<User[]> {
+    if (!clubLocation) {
+      return await this.getAllStaff();
+    }
+    
+    return await db.select().from(users)
+      .where(and(
+        ne(users.role, 'dancer'),
+        eq(users.clubLocation, clubLocation as any)
+      ));
+  }
+
+  async createStaffNote(note: { 
+    staffId: string; 
+    noteType: string; 
+    title: string; 
+    content: string; 
+    isPrivate?: boolean; 
+    createdBy: string; 
+    clubLocation: string; 
+  }) {
+    const [result] = await db.insert(staffNotes).values({
+      ...note,
+      id: sql`gen_random_uuid()`,
+      createdAt: new Date()
+    }).returning();
+    return result;
+  }
+
+  async getStaffNotes(staffId?: string): Promise<any[]> {
+    if (staffId) {
+      return await db.select().from(staffNotes)
+        .where(eq(staffNotes.staffId, staffId))
+        .orderBy(desc(staffNotes.createdAt));
+    }
+    return await db.select().from(staffNotes)
+      .orderBy(desc(staffNotes.createdAt));
   }
 
   // Registration tokens
@@ -716,24 +768,7 @@ export class DatabaseStorage implements IStorage {
       ));
   }
 
-  async getInactiveDancers(clubLocation?: string): Promise<DancerApplication[]> {
-    let query = db.select().from(dancerApplications)
-      .where(and(
-        eq(dancerApplications.status, "approved"),
-        eq(dancerApplications.isActive, false)
-      ));
-    
-    if (clubLocation) {
-      query = db.select().from(dancerApplications)
-        .where(and(
-          eq(dancerApplications.status, "approved"),
-          eq(dancerApplications.isActive, false),
-          eq(dancerApplications.clubLocation, clubLocation as any)
-        ));
-    }
-    
-    return await query.orderBy(desc(dancerApplications.updatedAt));
-  }
+
 
   // Dashboard metrics
   async getDashboardMetrics(): Promise<{
