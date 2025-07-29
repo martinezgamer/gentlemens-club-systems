@@ -9,6 +9,8 @@ import {
   registrationTokens,
   activityLogs,
   vipRooms,
+  dancerApplications,
+  staffNotes,
   type User,
   type UpsertUser,
   type TimeClockEntry,
@@ -28,6 +30,8 @@ import {
   type ActivityLog,
   type InsertActivityLog,
   type VipRoom,
+  type DancerApplication,
+  type InsertDancerApplication,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, desc, count, sum, isNull, ne, sql } from "drizzle-orm";
@@ -100,6 +104,16 @@ export interface IStorage {
   // VIP room operations
   getVipRooms(): Promise<VipRoom[]>;
   updateVipRoom(id: string, updates: Partial<VipRoom>): Promise<VipRoom>;
+  
+  // Dancer application operations
+  createDancerApplication(application: InsertDancerApplication): Promise<DancerApplication>;
+  getDancerApplications(clubLocation?: string): Promise<DancerApplication[]>;
+  getDancerApplicationById(id: string): Promise<DancerApplication | undefined>;
+  updateDancerApplicationStatus(id: string, status: string, reviewedBy: string, notes?: string): Promise<DancerApplication>;
+  approveDancerApplication(id: string, approvedBy: string): Promise<DancerApplication>;
+  rejectDancerApplication(id: string, rejectedBy: string, reason: string): Promise<DancerApplication>;
+  getActiveDancers(clubLocation?: string): Promise<DancerApplication[]>;
+  getInactiveDancers(clubLocation?: string): Promise<DancerApplication[]>;
   
   // Dashboard metrics
   getDashboardMetrics(): Promise<{
@@ -546,6 +560,110 @@ export class DatabaseStorage implements IStorage {
       .where(eq(vipRooms.id, id))
       .returning();
     return result;
+  }
+
+  // Dancer application operations
+  async createDancerApplication(application: InsertDancerApplication): Promise<DancerApplication> {
+    const [result] = await db.insert(dancerApplications).values({
+      ...application,
+      status: "pending",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }).returning();
+    return result;
+  }
+
+  async getDancerApplications(clubLocation?: string): Promise<DancerApplication[]> {
+    if (clubLocation) {
+      return await db.select().from(dancerApplications)
+        .where(eq(dancerApplications.clubLocation, clubLocation as any))
+        .orderBy(desc(dancerApplications.createdAt));
+    }
+    return await db.select().from(dancerApplications)
+      .orderBy(desc(dancerApplications.createdAt));
+  }
+
+  async getDancerApplicationById(id: string): Promise<DancerApplication | undefined> {
+    const [result] = await db.select().from(dancerApplications)
+      .where(eq(dancerApplications.id, id));
+    return result;
+  }
+
+  async updateDancerApplicationStatus(id: string, status: string, reviewedBy: string, notes?: string): Promise<DancerApplication> {
+    const [result] = await db.update(dancerApplications)
+      .set({
+        status: status as any,
+        reviewedBy,
+        notes,
+        updatedAt: new Date(),
+      })
+      .where(eq(dancerApplications.id, id))
+      .returning();
+    return result;
+  }
+
+  async approveDancerApplication(id: string, approvedBy: string): Promise<DancerApplication> {
+    const [result] = await db.update(dancerApplications)
+      .set({
+        status: "approved",
+        approvedBy,
+        isActive: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(dancerApplications.id, id))
+      .returning();
+    return result;
+  }
+
+  async rejectDancerApplication(id: string, rejectedBy: string, reason: string): Promise<DancerApplication> {
+    const [result] = await db.update(dancerApplications)
+      .set({
+        status: "rejected",
+        reviewedBy: rejectedBy,
+        rejectedReason: reason,
+        updatedAt: new Date(),
+      })
+      .where(eq(dancerApplications.id, id))
+      .returning();
+    return result;
+  }
+
+  async getActiveDancers(clubLocation?: string): Promise<DancerApplication[]> {
+    let query = db.select().from(dancerApplications)
+      .where(and(
+        eq(dancerApplications.status, "approved"),
+        eq(dancerApplications.isActive, true)
+      ));
+    
+    if (clubLocation) {
+      query = db.select().from(dancerApplications)
+        .where(and(
+          eq(dancerApplications.status, "approved"),
+          eq(dancerApplications.isActive, true),
+          eq(dancerApplications.clubLocation, clubLocation as any)
+        ));
+    }
+    
+    return await query.orderBy(desc(dancerApplications.createdAt));
+  }
+
+  async getInactiveDancers(clubLocation?: string): Promise<DancerApplication[]> {
+    let query = db.select().from(dancerApplications)
+      .where(and(
+        eq(dancerApplications.status, "approved"),
+        eq(dancerApplications.isActive, false)
+      ));
+    
+    if (clubLocation) {
+      query = db.select().from(dancerApplications)
+        .where(and(
+          eq(dancerApplications.status, "approved"),
+          eq(dancerApplications.isActive, false),
+          eq(dancerApplications.clubLocation, clubLocation as any)
+        ));
+    }
+    
+    return await query.orderBy(desc(dancerApplications.updatedAt));
   }
 
   // Dashboard metrics

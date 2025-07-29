@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import * as aiService from "./ai-service";
 import superuserRoutes from "./routes/superuser";
-import { insertFinancialRecordSchema, insertTimeClockSchema, insertTaskSchema, insertMessageSchema, insertMusicRequestSchema, insertScheduleSchema } from "@shared/schema";
+import { insertFinancialRecordSchema, insertTimeClockSchema, insertTaskSchema, insertMessageSchema, insertMusicRequestSchema, insertScheduleSchema, insertDancerApplicationSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -644,6 +644,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Live insights error:", error);
       res.status(500).json({ message: "Failed to get live insights" });
+    }
+  });
+
+  // Dancer application routes
+  app.post('/api/dancer-applications', isAuthenticated, async (req: any, res) => {
+    try {
+      const application = insertDancerApplicationSchema.parse(req.body);
+      const result = await storage.createDancerApplication(application);
+      res.json(result);
+    } catch (error) {
+      console.error("Error creating dancer application:", error);
+      res.status(400).json({ message: "Failed to create dancer application" });
+    }
+  });
+
+  app.get('/api/dancer-applications', isAuthenticated, async (req: any, res) => {
+    try {
+      const { clubLocation } = req.query;
+      const applications = await storage.getDancerApplications(clubLocation);
+      res.json(applications);
+    } catch (error) {
+      console.error("Error fetching dancer applications:", error);
+      res.status(500).json({ message: "Failed to fetch dancer applications" });
+    }
+  });
+
+  app.put('/api/dancer-applications/:id/approve', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Check if user has permission to approve
+      const allowedRoles = ['superuser', 'manager', 'house_mom', 'house_dad'];
+      if (!user || !allowedRoles.includes(user.role as string)) {
+        return res.status(403).json({ message: "Access denied. Insufficient permissions." });
+      }
+
+      const result = await storage.approveDancerApplication(id, userId);
+      res.json(result);
+    } catch (error) {
+      console.error("Error approving dancer application:", error);
+      res.status(500).json({ message: "Failed to approve dancer application" });
+    }
+  });
+
+  app.put('/api/dancer-applications/:id/reject', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Check if user has permission to reject
+      const allowedRoles = ['superuser', 'manager', 'house_mom', 'house_dad'];
+      if (!user || !allowedRoles.includes(user.role as string)) {
+        return res.status(403).json({ message: "Access denied. Insufficient permissions." });
+      }
+
+      const result = await storage.rejectDancerApplication(id, userId, reason);
+      res.json(result);
+    } catch (error) {
+      console.error("Error rejecting dancer application:", error);
+      res.status(500).json({ message: "Failed to reject dancer application" });
+    }
+  });
+
+  app.get('/api/dancers/active', isAuthenticated, async (req: any, res) => {
+    try {
+      const { clubLocation } = req.query;
+      const dancers = await storage.getActiveDancers(clubLocation);
+      res.json(dancers);
+    } catch (error) {
+      console.error("Error fetching active dancers:", error);
+      res.status(500).json({ message: "Failed to fetch active dancers" });
+    }
+  });
+
+  app.get('/api/dancers/inactive', isAuthenticated, async (req: any, res) => {
+    try {
+      const { clubLocation } = req.query;
+      const dancers = await storage.getInactiveDancers(clubLocation);
+      res.json(dancers);
+    } catch (error) {
+      console.error("Error fetching inactive dancers:", error);
+      res.status(500).json({ message: "Failed to fetch inactive dancers" });
+    }
+  });
+
+  app.put('/api/dancers/:id/toggle-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Check if user has permission to toggle status
+      const allowedRoles = ['superuser', 'manager', 'house_mom', 'house_dad'];
+      if (!user || !allowedRoles.includes(user.role as string)) {
+        return res.status(403).json({ message: "Access denied. Insufficient permissions." });
+      }
+
+      const application = await storage.getDancerApplicationById(id);
+      if (!application) {
+        return res.status(404).json({ message: "Dancer not found" });
+      }
+
+      const result = await storage.updateDancerApplicationStatus(
+        id, 
+        application.status as string, 
+        userId, 
+        `Status toggled to ${!application.isActive ? 'active' : 'inactive'}`
+      );
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error toggling dancer status:", error);
+      res.status(500).json({ message: "Failed to toggle dancer status" });
+    }
+  });
+
+  // File upload endpoint for dancer applications
+  app.post('/api/upload-document', isAuthenticated, async (req: any, res) => {
+    try {
+      // For now, just return a mock URL since we don't have file storage configured
+      // In production, this would upload to a cloud storage service
+      res.json({ 
+        url: `/uploads/documents/${Date.now()}-document.pdf`,
+        message: "File upload functionality would be implemented with cloud storage in production"
+      });
+    } catch (error) {
+      console.error("Error uploading document:", error);
+      res.status(500).json({ message: "Failed to upload document" });
     }
   });
 

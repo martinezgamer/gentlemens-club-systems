@@ -77,19 +77,25 @@ export const dancerApplications = pgTable("dancer_applications", {
   phoneNumber: varchar("phone_number").notNull(),
   address: text("address"),
   dateOfBirth: timestamp("date_of_birth"),
+  ssn: varchar("ssn", { length: 11 }), // XXX-XX-XXXX format
   emergencyContact: varchar("emergency_contact"),
   emergencyPhone: varchar("emergency_phone"),
   stageName: varchar("stage_name"),
   experience: text("experience"),
   availability: text("availability"),
+  idDocumentUrl: text("id_document_url"), // Uploaded ID document
+  idDocumentType: varchar("id_document_type"), // drivers_license, passport, state_id
   clubLocation: clubLocationEnum("club_location").notNull(),
   status: applicationStatusEnum("status").default("pending"),
   interviewDate: timestamp("interview_date"),
   interviewNotes: text("interview_notes"),
   backgroundCheckStatus: varchar("background_check_status"),
-  documents: text("documents"), // JSON array of document URLs/paths
+  documents: text("documents"), // JSON array of additional document URLs/paths
   notes: text("notes"),
   reviewedBy: varchar("reviewed_by").references(() => users.id),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  rejectedReason: text("rejected_reason"),
+  isActive: boolean("is_active").default(false), // Active/inactive status after approval
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -262,6 +268,26 @@ export const registrationTokens = pgTable("registration_tokens", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Insert and Select schemas for DancerApplications
+export const insertDancerApplicationSchema = createInsertSchema(dancerApplications, {
+  email: z.string().email(),
+  phoneNumber: z.string().min(10),
+  ssn: z.string().regex(/^\d{3}-\d{2}-\d{4}$/, "SSN must be in XXX-XX-XXXX format").optional(),
+  dateOfBirth: z.date().optional(),
+  clubLocation: z.enum(["club_1", "club_2"]),
+}).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true,
+  reviewedBy: true,
+  approvedBy: true 
+});
+
+export const selectDancerApplicationSchema = createInsertSchema(dancerApplications);
+
+export type InsertDancerApplication = z.infer<typeof insertDancerApplicationSchema>;
+export type DancerApplication = typeof dancerApplications.$inferSelect;
+
 // Relations
 export const userRelations = relations(users, ({ many }) => ({
   schedules: many(schedules),
@@ -430,11 +456,7 @@ export const insertRegistrationTokenSchema = createInsertSchema(registrationToke
   createdAt: true,
 });
 
-export const insertDancerApplicationSchema = createInsertSchema(dancerApplications).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+
 
 export const insertStaffNoteSchema = createInsertSchema(staffNotes).omit({
   id: true,

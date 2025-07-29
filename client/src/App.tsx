@@ -9,6 +9,7 @@ import NotFound from "./pages/not-found";
 import Landing from "./pages/landing";
 import Dashboard from "./pages/dashboard";
 import SuperuserDashboard from "./pages/superuser-dashboard";
+import DancerApplications from "./pages/dancer-applications";
 import TimeClock from "./pages/timeclock";
 import Financial from "./pages/financial";
 import Schedule from "./pages/schedule";
@@ -37,19 +38,32 @@ function Router() {
                 <Route path="/" component={SuperuserDashboard} />
                 <Route path="/superuser" component={SuperuserDashboard} />
                 <Route path="/dashboard" component={Dashboard} />
+                <Route path="/dancers" component={DancerApplications} />
+                <Route path="/timeclock" component={TimeClock} />
+                <Route path="/financial" component={Financial} />
+                <Route path="/schedule" component={Schedule} />
+                <Route path="/messages" component={Messages} />
+                <Route path="/music" component={Music} />
+                <Route path="/tasks" component={Tasks} />
+                <Route path="/staff" component={Staff} />
+                <Route path="/reports" component={Reports} />
+                <Route path="/admin" component={Admin} />
               </>
             ) : (
-              <Route path="/" component={Dashboard} />
+              <>
+                <Route path="/" component={Dashboard} />
+                <Route path="/dancers" component={DancerApplications} />
+                <Route path="/timeclock" component={TimeClock} />
+                <Route path="/financial" component={Financial} />
+                <Route path="/schedule" component={Schedule} />
+                <Route path="/messages" component={Messages} />
+                <Route path="/music" component={Music} />
+                <Route path="/tasks" component={Tasks} />
+                <Route path="/staff" component={Staff} />
+                <Route path="/reports" component={Reports} />
+              </>
             )}
-            <Route path="/timeclock" component={TimeClock} />
-            <Route path="/financial" component={Financial} />
-            <Route path="/schedule" component={Schedule} />
-            <Route path="/messages" component={Messages} />
-            <Route path="/music" component={Music} />
-            <Route path="/tasks" component={Tasks} />
-            <Route path="/staff" component={Staff} />
-            <Route path="/reports" component={Reports} />
-            <Route path="/admin" component={Admin} />
+
           </Layout>
         </>
       )}
