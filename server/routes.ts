@@ -4,6 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import * as aiService from "./ai-service";
+import superuserRoutes from "./routes/superuser";
 import { insertFinancialRecordSchema, insertTimeClockSchema, insertTaskSchema, insertMessageSchema, insertMusicRequestSchema, insertScheduleSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -645,6 +646,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to get live insights" });
     }
   });
+
+  // Mount superuser routes
+  app.use('/api/superuser', isAuthenticated, superuserRoutes);
 
   // Create HTTP server
   const httpServer = createServer(app);

@@ -28,15 +28,33 @@ export const sessions = pgTable(
 
 // Enums
 export const userRoleEnum = pgEnum("user_role", [
+  "superuser",
   "owner",
   "manager", 
   "house_mom",
   "house_dad",
   "dancer",
   "dj",
+  "floor_host",
+  "front_door",
   "bartender",
   "server",
   "barback"
+]);
+
+export const clubLocationEnum = pgEnum("club_location", [
+  "club_1",
+  "club_2"
+]);
+
+export const applicationStatusEnum = pgEnum("application_status", [
+  "pending",
+  "under_review", 
+  "approved",
+  "rejected",
+  "interview_scheduled",
+  "background_check",
+  "training"
 ]);
 
 export const shiftTypeEnum = pgEnum("shift_type", ["day", "night"]);
@@ -50,6 +68,57 @@ export const eventTypeEnum = pgEnum("event_type", ["birthday", "bachelor_party",
 export const complianceStatusEnum = pgEnum("compliance_status", ["pending", "approved", "expired", "rejected"]);
 export const promotionTypeEnum = pgEnum("promotion_type", ["discount", "free_drink", "vip_upgrade", "special_rate"]);
 
+// Dancer Applications
+export const dancerApplications = pgTable("dancer_applications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
+  email: varchar("email").notNull(),
+  phoneNumber: varchar("phone_number").notNull(),
+  address: text("address"),
+  dateOfBirth: timestamp("date_of_birth"),
+  emergencyContact: varchar("emergency_contact"),
+  emergencyPhone: varchar("emergency_phone"),
+  stageName: varchar("stage_name"),
+  experience: text("experience"),
+  availability: text("availability"),
+  clubLocation: clubLocationEnum("club_location").notNull(),
+  status: applicationStatusEnum("status").default("pending"),
+  interviewDate: timestamp("interview_date"),
+  interviewNotes: text("interview_notes"),
+  backgroundCheckStatus: varchar("background_check_status"),
+  documents: text("documents"), // JSON array of document URLs/paths
+  notes: text("notes"),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Staff Notes and Tracking
+export const staffNotes = pgTable("staff_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  staffId: varchar("staff_id").references(() => users.id).notNull(),
+  noteType: varchar("note_type").notNull(), // 'performance', 'disciplinary', 'general', 'commendation'
+  title: varchar("title").notNull(),
+  content: text("content").notNull(),
+  isPrivate: boolean("is_private").default(false),
+  createdBy: varchar("created_by").references(() => users.id).notNull(),
+  clubLocation: clubLocationEnum("club_location").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Club Locations
+export const clubLocations = pgTable("club_locations", {
+  id: varchar("id").primaryKey(),
+  name: varchar("name").notNull(),
+  address: text("address"),
+  phoneNumber: varchar("phone_number"),
+  managerEmail: varchar("manager_email"),
+  isActive: boolean("is_active").default(true),
+  operatingHours: text("operating_hours"), // JSON format
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // User storage table - mandatory for Replit Auth
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -58,10 +127,16 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   role: userRoleEnum("role").default("dancer"),
+  clubLocation: clubLocationEnum("club_location"),
   isActive: boolean("is_active").default(true),
   phoneNumber: varchar("phone_number"),
+  address: text("address"),
+  emergencyContact: varchar("emergency_contact"),
+  emergencyPhone: varchar("emergency_phone"),
   registrationToken: varchar("registration_token"),
   profileCompleted: boolean("profile_completed").default(false),
+  startDate: timestamp("start_date"),
+  notes: text("notes"), // Staff notes and tracking
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -70,6 +145,7 @@ export const users = pgTable("users", {
 export const schedules = pgTable("schedules", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull(),
+  clubLocation: clubLocationEnum("club_location").notNull(),
   date: timestamp("date").notNull(),
   shiftType: shiftTypeEnum("shift_type").notNull(),
   startTime: timestamp("start_time").notNull(),
@@ -84,6 +160,7 @@ export const schedules = pgTable("schedules", {
 export const timeClockEntries = pgTable("time_clock_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull(),
+  clubLocation: clubLocationEnum("club_location").notNull(),
   shiftType: shiftTypeEnum("shift_type").notNull(),
   clockInTime: timestamp("clock_in_time").notNull(),
   clockOutTime: timestamp("clock_out_time"),
@@ -112,6 +189,7 @@ export const messages = pgTable("messages", {
   senderId: varchar("sender_id").references(() => users.id).notNull(),
   receiverId: varchar("receiver_id").references(() => users.id),
   recipientRole: userRoleEnum("recipient_role"), // for group messages
+  clubLocation: clubLocationEnum("club_location").notNull(),
   subject: varchar("subject").notNull(),
   content: text("content").notNull(),
   status: messageStatusEnum("status").default("sent"),
@@ -279,6 +357,28 @@ export const activityLogRelations = relations(activityLogs, ({ one }) => ({
   }),
 }));
 
+// Dancer application relations
+export const dancerApplicationRelations = relations(dancerApplications, ({ one }) => ({
+  reviewer: one(users, {
+    fields: [dancerApplications.reviewedBy],
+    references: [users.id],
+  }),
+}));
+
+// Staff notes relations
+export const staffNoteRelations = relations(staffNotes, ({ one }) => ({
+  staff: one(users, {
+    fields: [staffNotes.staffId],
+    references: [users.id],
+  }),
+  createdBy: one(users, {
+    fields: [staffNotes.createdBy],
+    references: [users.id],
+  }),
+}));
+
+
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -330,24 +430,58 @@ export const insertRegistrationTokenSchema = createInsertSchema(registrationToke
   createdAt: true,
 });
 
+export const insertDancerApplicationSchema = createInsertSchema(dancerApplications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertStaffNoteSchema = createInsertSchema(staffNotes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertClubLocationSchema = createInsertSchema(clubLocations).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
-export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+export type UpsertUser = typeof users.$inferInsert;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type DancerApplication = typeof dancerApplications.$inferSelect;
+export type InsertDancerApplication = z.infer<typeof insertDancerApplicationSchema>;
+
+export type StaffNote = typeof staffNotes.$inferSelect;
+export type InsertStaffNote = z.infer<typeof insertStaffNoteSchema>;
+
+export type ClubLocation = typeof clubLocations.$inferSelect;
+export type InsertClubLocation = z.infer<typeof insertClubLocationSchema>;
+
 export type Schedule = typeof schedules.$inferSelect;
 export type InsertSchedule = z.infer<typeof insertScheduleSchema>;
+
 export type TimeClockEntry = typeof timeClockEntries.$inferSelect;
 export type InsertTimeClockEntry = z.infer<typeof insertTimeClockSchema>;
+
 export type FinancialRecord = typeof financialRecords.$inferSelect;
 export type InsertFinancialRecord = z.infer<typeof insertFinancialRecordSchema>;
+
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
 export type Task = typeof tasks.$inferSelect;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
+
 export type MusicRequest = typeof musicRequests.$inferSelect;
 export type InsertMusicRequest = z.infer<typeof insertMusicRequestSchema>;
+
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
+
 export type VipRoom = typeof vipRooms.$inferSelect;
+
 export type RegistrationToken = typeof registrationTokens.$inferSelect;
 export type InsertRegistrationToken = z.infer<typeof insertRegistrationTokenSchema>;

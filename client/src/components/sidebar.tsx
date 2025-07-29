@@ -10,12 +10,16 @@ const navigation = [
   { name: "Dashboard", href: "/", icon: BarChart3 },
   { name: "Schedule", href: "/schedule", icon: Calendar },
   { name: "Time Clock", href: "/timeclock", icon: Clock },
-  { name: "Financial", href: "/financial", icon: DollarSign },
   { name: "Messages", href: "/messages", icon: MessageCircle },
   { name: "Music Requests", href: "/music", icon: Music },
   { name: "Tasks", href: "/tasks", icon: CheckSquare },
   { name: "Staff", href: "/staff", icon: Users },
   { name: "Reports", href: "/reports", icon: FileText },
+];
+
+const superuserNavigation = [
+  { name: "Superuser Dashboard", href: "/superuser", icon: Building },
+  { name: "Staff Dashboard", href: "/dashboard", icon: BarChart3 },
 ];
 
 const adminNavigation = [
@@ -39,7 +43,8 @@ export default function Sidebar() {
     window.location.href = "/api/logout";
   };
 
-  const canAccessAdmin = (user as any)?.role === 'owner' || (user as any)?.role === 'manager';
+  const canAccessAdmin = (user as any)?.role === 'owner' || (user as any)?.role === 'manager' || (user as any)?.role === 'superuser';
+  const isSuperuser = (user as any)?.role === 'superuser';
 
   // Mobile header with hamburger menu
   if (isMobile) {
