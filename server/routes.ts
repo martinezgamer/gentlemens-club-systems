@@ -444,5 +444,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Store broadcast function for use in other parts of the app
   (global as any).broadcast = broadcast;
 
+  // Comprehensive Analytics API Routes
+  app.get("/api/analytics/customers", isAuthenticated, async (req: any, res) => {
+    try {
+      const customers = await storage.getCustomers();
+      res.json(customers);
+    } catch (error) {
+      console.error("Error fetching customers:", error);
+      res.status(500).json({ message: "Failed to fetch customers" });
+    }
+  });
+
+  app.get("/api/analytics/daily-metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const metrics = await storage.getDailyMetrics();
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching daily metrics:", error);
+      res.status(500).json({ message: "Failed to fetch daily metrics" });
+    }
+  });
+
+  app.get("/api/inventory/items", isAuthenticated, async (req: any, res) => {
+    try {
+      const items = await storage.getInventoryItems();
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching inventory:", error);
+      res.status(500).json({ message: "Failed to fetch inventory" });
+    }
+  });
+
+  app.get("/api/events", isAuthenticated, async (req: any, res) => {
+    try {
+      const events = await storage.getEvents();
+      res.json(events);
+    } catch (error) {
+      console.error("Error fetching events:", error);
+      res.status(500).json({ message: "Failed to fetch events" });
+    }
+  });
+
+  app.get("/api/security/incidents", isAuthenticated, async (req: any, res) => {
+    try {
+      const incidents = await storage.getSecurityIncidents();
+      res.json(incidents);
+    } catch (error) {
+      console.error("Error fetching security incidents:", error);
+      res.status(500).json({ message: "Failed to fetch security incidents" });
+    }
+  });
+
+  app.get("/api/marketing/promotions", isAuthenticated, async (req: any, res) => {
+    try {
+      const promotions = await storage.getPromotions();
+      res.json(promotions);
+    } catch (error) {
+      console.error("Error fetching promotions:", error);
+      res.status(500).json({ message: "Failed to fetch promotions" });
+    }
+  });
+
+  app.get("/api/analytics/staff-performance", isAuthenticated, async (req: any, res) => {
+    try {
+      const performance = await storage.getStaffPerformance();
+      res.json(performance);
+    } catch (error) {
+      console.error("Error fetching staff performance:", error);
+      res.status(500).json({ message: "Failed to fetch staff performance" });
+    }
+  });
+
+  app.get("/api/equipment/inventory", isAuthenticated, async (req: any, res) => {
+    try {
+      const equipment = await storage.getEquipmentInventory();
+      res.json(equipment);
+    } catch (error) {
+      console.error("Error fetching equipment:", error);
+      res.status(500).json({ message: "Failed to fetch equipment" });
+    }
+  });
+
+  app.get("/api/financial/expenses", isAuthenticated, async (req: any, res) => {
+    try {
+      const expenses = await storage.getBusinessExpenses();
+      res.json(expenses);
+    } catch (error) {
+      console.error("Error fetching expenses:", error);
+      res.status(500).json({ message: "Failed to fetch expenses" });
+    }
+  });
+
+  app.get("/api/customers/visits", isAuthenticated, async (req: any, res) => {
+    try {
+      const visits = await storage.getCustomerVisits();
+      res.json(visits);
+    } catch (error) {
+      console.error("Error fetching customer visits:", error);
+      res.status(500).json({ message: "Failed to fetch customer visits" });
+    }
+  });
+
+  app.get("/api/compliance/documents", isAuthenticated, async (req: any, res) => {
+    try {
+      const documents = await storage.getComplianceDocuments();
+      res.json(documents);
+    } catch (error) {
+      console.error("Error fetching compliance documents:", error);
+      res.status(500).json({ message: "Failed to fetch compliance documents" });
+    }
+  });
+
+  app.get("/api/maintenance/schedules", isAuthenticated, async (req: any, res) => {
+    try {
+      const schedules = await storage.getMaintenanceSchedules();
+      res.json(schedules);
+    } catch (error) {
+      console.error("Error fetching maintenance schedules:", error);
+      res.status(500).json({ message: "Failed to fetch maintenance schedules" });
+    }
+  });
+
   return httpServer;
 }

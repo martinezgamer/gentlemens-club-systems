@@ -423,6 +423,306 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async createSchedule(schedule: InsertSchedule): Promise<Schedule> {
+    const [result] = await db.insert(schedules).values(schedule).returning();
+    return result;
+  }
+
+  async getSchedules(userId?: string): Promise<(Schedule & { user: User })[]> {
+    const query = db
+      .select()
+      .from(schedules)
+      .leftJoin(users, eq(schedules.userId, users.id));
+    
+    const results = userId
+      ? await query.where(eq(schedules.userId, userId)).orderBy(schedules.shiftDate)
+      : await query.orderBy(schedules.shiftDate);
+    
+    return results.map(row => ({ ...row.schedules, user: row.users! }));
+  }
+
+  async updateSchedule(id: string, updates: Partial<Schedule>): Promise<Schedule> {
+    const [result] = await db
+      .update(schedules)
+      .set(updates)
+      .where(eq(schedules.id, id))
+      .returning();
+    return result;
+  }
+
+  async createMusicRequest(request: InsertMusicRequest): Promise<MusicRequest> {
+    const [result] = await db.insert(musicRequests).values(request).returning();
+    return result;
+  }
+
+  async getMusicRequests(djId?: string): Promise<(MusicRequest & { requester: User; dj?: User })[]> {
+    const conditions = [];
+    if (djId) conditions.push(eq(musicRequests.djId, djId));
+    
+    const query = db
+      .select()
+      .from(musicRequests)
+      .leftJoin(users, eq(musicRequests.requesterId, users.id))
+      .leftJoin(users, eq(musicRequests.djId, users.id));
+    
+    const results = conditions.length > 0
+      ? await query.where(and(...conditions)).orderBy(desc(musicRequests.createdAt))
+      : await query.orderBy(desc(musicRequests.createdAt));
+    
+    return results.map(row => ({
+      ...row.music_requests,
+      requester: row.users!,
+      dj: row.users || undefined
+    }));
+  }
+
+  async updateMusicRequest(id: string, updates: Partial<MusicRequest>): Promise<MusicRequest> {
+    const [result] = await db
+      .update(musicRequests)
+      .set(updates)
+      .where(eq(musicRequests.id, id))
+      .returning();
+    return result;
+  }
+
+  async createActivityLog(log: InsertActivityLog): Promise<ActivityLog> {
+    const [result] = await db.insert(activityLogs).values(log).returning();
+    return result;
+  }
+
+  async getActivityLogs(dancerId?: string, from?: Date, to?: Date): Promise<(ActivityLog & { dancer: User })[]> {
+    const conditions = [];
+    if (dancerId) conditions.push(eq(activityLogs.dancerId, dancerId));
+    if (from) conditions.push(gte(activityLogs.createdAt, from));
+    if (to) conditions.push(lte(activityLogs.createdAt, to));
+    
+    const query = db
+      .select()
+      .from(activityLogs)
+      .leftJoin(users, eq(activityLogs.dancerId, users.id));
+    
+    const results = conditions.length > 0
+      ? await query.where(and(...conditions)).orderBy(desc(activityLogs.createdAt))
+      : await query.orderBy(desc(activityLogs.createdAt));
+    
+    return results.map(row => ({ ...row.activity_logs, dancer: row.users! }));
+  }
+
+  async getVipRooms(): Promise<VipRoom[]> {
+    return await db.select().from(vipRooms);
+  }
+
+  async updateVipRoom(id: string, updates: Partial<VipRoom>): Promise<VipRoom> {
+    const [result] = await db
+      .update(vipRooms)
+      .set(updates)
+      .where(eq(vipRooms.id, id))
+      .returning();
+    return result;
+  }
+
+  async getDashboardMetrics(): Promise<{
+    staffOnDuty: number;
+    todaysTips: number;
+    vipSessions: number;
+    musicRequests: number;
+  }> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Staff currently on duty
+    const [staffOnDutyResult] = await db
+      .select({ count: count() })
+      .from(timeClockEntries)
+      .where(and(
+        eq(timeClockEntries.isActive, true),
+        isNull(timeClockEntries.clockOutTime)
+      ));
+
+    // Today's tips
+    const [tipsResult] = await db
+      .select({ total: sum(financialRecords.amount) })
+      .from(financialRecords)
+      .where(and(
+        eq(financialRecords.type, 'tips'),
+        gte(financialRecords.createdAt, today),
+        lte(financialRecords.createdAt, tomorrow)
+      ));
+
+    // VIP sessions today
+    const [vipResult] = await db
+      .select({ count: count() })
+      .from(activityLogs)
+      .where(and(
+        eq(activityLogs.type, 'vip_session'),
+        gte(activityLogs.createdAt, today),
+        lte(activityLogs.createdAt, tomorrow)
+      ));
+
+    // Pending music requests
+    const [musicResult] = await db
+      .select({ count: count() })
+      .from(musicRequests)
+      .where(eq(musicRequests.isApproved, false));
+
+    return {
+      staffOnDuty: staffOnDutyResult?.count || 0,
+      todaysTips: Number(tipsResult?.total || 0),
+      vipSessions: vipResult?.count || 0,
+      musicRequests: musicResult?.count || 0,
+    };
+  }
+
+  // Comprehensive Analytics & Business Intelligence Methods
+  async getCustomers(): Promise<any[]> {
+    const results = await db.execute(`SELECT * FROM customers ORDER BY created_at DESC`);
+    return results;
+  }
+
+  async getDailyMetrics(): Promise<any[]> {
+    const results = await db.execute(`SELECT * FROM daily_metrics ORDER BY date DESC LIMIT 30`);
+    return results;
+  }
+
+  async getInventoryItems(): Promise<any[]> {
+    const results = await db.execute(`
+      SELECT i.*, c.name as category_name 
+      FROM inventory_items i 
+      LEFT JOIN inventory_categories c ON i.category_id = c.id 
+      ORDER BY i.name
+    `);
+    return results;
+  }
+
+  async getEvents(): Promise<any[]> {
+    const results = await db.execute(`
+      SELECT e.*, c.first_name, c.last_name, v.name as room_name
+      FROM events e 
+      LEFT JOIN customers c ON e.customer_id = c.id 
+      LEFT JOIN vip_rooms v ON e.room_id = v.id 
+      ORDER BY e.event_date
+    `);
+    return results;
+  }
+
+  async getSecurityIncidents(): Promise<any[]> {
+    const results = await db.execute(`
+      SELECT s.*, u.first_name, u.last_name 
+      FROM security_incidents s 
+      LEFT JOIN users u ON s.reported_by = u.id 
+      ORDER BY s.incident_date DESC
+    `);
+    return results;
+  }
+
+  async getPromotions(): Promise<any[]> {
+    const results = await db.execute(`SELECT * FROM promotions ORDER BY created_at DESC`);
+    return results;
+  }
+
+  async getStaffPerformance(): Promise<any[]> {
+    const results = await db.execute(`
+      SELECT sp.*, u.first_name, u.last_name, u.role 
+      FROM staff_performance sp 
+      LEFT JOIN users u ON sp.user_id = u.id 
+      ORDER BY sp.date DESC
+    `);
+    return results;
+  }
+
+  async getEquipmentInventory(): Promise<any[]> {
+    const results = await db.execute(`SELECT * FROM equipment_inventory ORDER BY equipment_name`);
+    return results;
+  }
+
+  async getBusinessExpenses(): Promise<any[]> {
+    const results = await db.execute(`
+      SELECT e.*, c.name as category_name 
+      FROM business_expenses e 
+      LEFT JOIN expense_categories c ON e.category_id = c.id 
+      ORDER BY e.expense_date DESC
+    `);
+    return results;
+  }
+
+  async getCustomerVisits(): Promise<any[]> {
+    const results = await db.execute(`
+      SELECT cv.*, c.first_name, c.last_name 
+      FROM customer_visits cv 
+      LEFT JOIN customers c ON cv.customer_id = c.id 
+      ORDER BY cv.visit_date DESC
+    `);
+    return results;
+  }
+
+  async getComplianceDocuments(): Promise<any[]> {
+    const results = await db.execute(`SELECT * FROM compliance_documents ORDER BY expiry_date`);
+    return results;
+  }
+
+  async getMaintenanceSchedules(): Promise<any[]> {
+    const results = await db.execute(`
+      SELECT ms.*, ei.equipment_name 
+      FROM maintenance_schedules ms 
+      LEFT JOIN equipment_inventory ei ON ms.equipment_id = ei.id 
+      ORDER BY ms.next_due
+    `);
+    return results;
+  }
+}
+
+export const storage = new DatabaseStorage();
+    const [result] = await db
+      .update(messages)
+      .set({ readAt: new Date(), status: 'read' })
+      .where(eq(messages.id, id))
+      .returning();
+    return result;
+  }
+
+  async createTask(task: InsertTask): Promise<Task> {
+    const [result] = await db.insert(tasks).values(task).returning();
+    return result;
+  }
+
+  async getTasks(assignedTo?: string, status?: string): Promise<(Task & { assignee?: User; creator: User })[]> {
+    const conditions = [];
+    if (assignedTo) conditions.push(eq(tasks.assignedTo, assignedTo));
+    if (status) conditions.push(eq(tasks.status, status as any));
+    
+    const query = db
+      .select()
+      .from(tasks)
+      .leftJoin(users, eq(tasks.assignedTo, users.id))
+      .leftJoin(users, eq(tasks.assignedBy, users.id));
+    
+    const results = conditions.length > 0
+      ? await query.where(and(...conditions)).orderBy(desc(tasks.createdAt))
+      : await query.orderBy(desc(tasks.createdAt));
+    
+    return results.map(row => ({
+      ...row.tasks,
+      assignee: row.users || undefined,
+      creator: row.users!
+    }));
+  }
+
+  async updateTaskStatus(id: string, status: string): Promise<Task> {
+    const updates: Partial<Task> = { status: status as any };
+    if (status === 'completed') {
+      updates.completedAt = new Date();
+    }
+    
+    const [result] = await db
+      .update(tasks)
+      .set(updates)
+      .where(eq(tasks.id, id))
+      .returning();
+    return result;
+  }
+
   async createMusicRequest(request: InsertMusicRequest): Promise<MusicRequest> {
     const [result] = await db.insert(musicRequests).values(request).returning();
     return result;

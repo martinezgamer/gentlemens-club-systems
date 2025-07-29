@@ -44,6 +44,11 @@ export const financialTypeEnum = pgEnum("financial_type", ["tips", "house_fee", 
 export const taskStatusEnum = pgEnum("task_status", ["pending", "in_progress", "completed", "cancelled"]);
 export const taskPriorityEnum = pgEnum("task_priority", ["low", "medium", "high", "urgent"]);
 export const messageStatusEnum = pgEnum("message_status", ["sent", "delivered", "read"]);
+export const customerTypeEnum = pgEnum("customer_type", ["regular", "vip", "member", "banned"]);
+export const inventoryStatusEnum = pgEnum("inventory_status", ["in_stock", "low_stock", "out_of_stock", "discontinued"]);
+export const eventTypeEnum = pgEnum("event_type", ["birthday", "bachelor_party", "corporate", "special_show", "private_party"]);
+export const complianceStatusEnum = pgEnum("compliance_status", ["pending", "approved", "expired", "rejected"]);
+export const promotionTypeEnum = pgEnum("promotion_type", ["discount", "free_drink", "vip_upgrade", "special_rate"]);
 
 // User storage table - mandatory for Replit Auth
 export const users = pgTable("users", {
