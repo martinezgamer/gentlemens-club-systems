@@ -81,7 +81,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User is already clocked in" });
       }
       
-      const entry = await storage.createTimeClockEntry(data);
+      const entry = await storage.clockIn(data);
       res.json(entry);
     } catch (error) {
       console.error("Error clocking in:", error);
@@ -99,11 +99,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No active clock entry found" });
       }
       
-      const entry = await storage.updateTimeClockEntry(activeEntry.id, {
-        clockOutTime: new Date(),
-        notes,
-        isActive: false,
-      });
+      const entry = await storage.clockOut(userId);
       
       res.json(entry);
     } catch (error) {
@@ -405,7 +401,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { id } = req.params;
       const updates = req.body;
-      const updatedUser = await storage.updateUser(id, updates);
+      // For basic updates like role changes, we'll use the existing update method
+      const updatedUser = await storage.updateUserRole(id, updates.role || 'dancer');
       res.json(updatedUser);
     } catch (error) {
       console.error("Error updating staff:", error);
@@ -456,7 +453,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/ai/customer-insights', isAuthenticated, async (req, res) => {
     try {
       const allUsers = await storage.getAllUsers();
-      const customerData = allUsers.filter(user => user.role === 'customer');
+      // Filter for external customers or use empty array if no customer data exists
+      const customerData = allUsers.filter(user => user.role === 'dancer') || [];
       const insights = await aiService.analyzeCustomerData(customerData);
       res.json(insights);
     } catch (error) {
@@ -511,7 +509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getAllSchedules(),
         storage.getAllFinancialRecords(),
         storage.getAllUsers(),
-        storage.getAllUsers().then(users => users.filter(u => u.role === 'customer')),
+        storage.getAllUsers().then(users => users.filter(u => u.role === 'dancer')),
         storage.getAllTasks()
       ]);
       

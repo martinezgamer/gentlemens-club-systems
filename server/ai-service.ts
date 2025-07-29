@@ -651,8 +651,11 @@ export async function getLiveInsights(): Promise<{
     }
 
     return result;
-  } catch (error) {
-    console.error("Live insights error:", error);
+  } catch (error: any) {
+    // Only log non-503 errors to reduce noise when API is overloaded
+    if (error.status !== 503) {
+      console.error("Live insights error:", error);
+    }
     return {
       alerts: ["AI monitoring system active and learning your business patterns"],
       opportunities: ["Data analysis in progress - building intelligent recommendations"],

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,11 +17,28 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { lastMessage } = useWebSocket();
 
-  const { data: metrics, refetch: refetchMetrics } = useQuery({
+  const { data: metrics, refetch: refetchMetrics } = useQuery<{
+    staffOnDuty: number;
+    todaysTips: number;
+    vipSessions: number;
+    musicRequests: number;
+  }>({
     queryKey: ["/api/dashboard/metrics"],
   });
 
-  const { data: currentStaff, refetch: refetchStaff } = useQuery({
+  const { data: currentStaff, refetch: refetchStaff } = useQuery<Array<{
+    id: string;
+    userId: string;
+    clockInTime: string;
+    clockOutTime?: string;
+    user: {
+      id: string;
+      email: string;
+      firstName?: string;
+      lastName?: string;
+      role?: string;
+    };
+  }>>({
     queryKey: ["/api/dashboard/current-staff"],
   });
 
@@ -49,7 +66,7 @@ export default function Dashboard() {
         {/* Welcome Section */}
         <div className="bg-gradient-to-r from-primary to-blue-600 rounded-2xl p-4 lg:p-6 text-white">
           <h2 className="text-xl lg:text-2xl font-bold mb-2">
-            Welcome back, {user?.firstName || 'User'}!
+            Welcome back, {user?.firstName || user?.email?.split('@')[0] || 'User'}!
           </h2>
           <p className="text-blue-100 text-sm lg:text-base">Here's what's happening at your club today</p>
         </div>
@@ -62,7 +79,7 @@ export default function Dashboard() {
                 <div>
                   <p className="text-gray-600 text-xs lg:text-sm font-medium">Staff On Duty</p>
                   <p className="text-lg lg:text-3xl font-bold text-gray-900">
-                    {metrics?.staffOnDuty || 0}
+                    {metrics?.staffOnDuty ?? 0}
                   </p>
                   <p className="text-success text-xs lg:text-sm font-medium">Currently working</p>
                 </div>
@@ -79,7 +96,7 @@ export default function Dashboard() {
                 <div>
                   <p className="text-gray-600 text-xs lg:text-sm font-medium">Today's Tips</p>
                   <p className="text-lg lg:text-3xl font-bold text-gray-900">
-                    ${metrics?.todaysTips?.toFixed(2) || '0.00'}
+                    ${(metrics?.todaysTips ?? 0).toFixed(2)}
                   </p>
                   <p className="text-success text-xs lg:text-sm font-medium">Logged today</p>
                 </div>
@@ -96,7 +113,7 @@ export default function Dashboard() {
                 <div>
                   <p className="text-gray-600 text-xs lg:text-sm font-medium">VIP Sessions</p>
                   <p className="text-lg lg:text-3xl font-bold text-gray-900">
-                    {metrics?.vipSessions || 0}
+                    {metrics?.vipSessions ?? 0}
                   </p>
                   <p className="text-warning text-xs lg:text-sm font-medium">Today</p>
                 </div>
@@ -113,7 +130,7 @@ export default function Dashboard() {
                 <div>
                   <p className="text-gray-600 text-xs lg:text-sm font-medium">Music Requests</p>
                   <p className="text-lg lg:text-3xl font-bold text-gray-900">
-                    {metrics?.musicRequests || 0}
+                    {metrics?.musicRequests ?? 0}
                   </p>
                   <p className="text-error text-xs lg:text-sm font-medium">Pending</p>
                 </div>
@@ -133,13 +150,13 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg lg:text-xl">Staff Currently Working</CardTitle>
                 <Badge variant="secondary" className="bg-success/10 text-success text-xs lg:text-sm">
-                  {currentStaff?.length || 0} Online
+                  {currentStaff?.length ?? 0} Online
                 </Badge>
               </div>
             </CardHeader>
             <CardContent className="pt-0">
               <div className="space-y-3 lg:space-y-4">
-                {currentStaff?.length ? (
+                {currentStaff && currentStaff.length > 0 ? (
                   currentStaff.map((entry: any) => (
                     <div key={entry.id} className="flex items-center justify-between p-2 lg:p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center space-x-2 lg:space-x-3">

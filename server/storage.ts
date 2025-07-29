@@ -594,12 +594,12 @@ export class DatabaseStorage implements IStorage {
   // Analytics operations
   async getCustomers(): Promise<any[]> {
     const results = await db.execute(`SELECT * FROM customers ORDER BY created_at DESC`);
-    return results;
+    return results.rows || [];
   }
 
   async getDailyMetrics(): Promise<any[]> {
     const results = await db.execute(`SELECT * FROM daily_metrics ORDER BY date DESC LIMIT 30`);
-    return results;
+    return results.rows || [];
   }
 
   async getInventoryItems(): Promise<any[]> {
@@ -609,7 +609,7 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN inventory_categories c ON i.category_id = c.id 
       ORDER BY i.name
     `);
-    return results;
+    return results.rows || [];
   }
 
   async getEvents(): Promise<any[]> {
@@ -620,7 +620,7 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN vip_rooms v ON e.room_id = v.id 
       ORDER BY e.event_date
     `);
-    return results;
+    return results.rows || [];
   }
 
   async getSecurityIncidents(): Promise<any[]> {
@@ -630,12 +630,12 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN users u ON s.reported_by = u.id 
       ORDER BY s.incident_date DESC
     `);
-    return results;
+    return results.rows || [];
   }
 
   async getPromotions(): Promise<any[]> {
     const results = await db.execute(`SELECT * FROM promotions ORDER BY created_at DESC`);
-    return results;
+    return results.rows || [];
   }
 
   async getStaffPerformance(): Promise<any[]> {
@@ -645,12 +645,12 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN users u ON sp.user_id = u.id 
       ORDER BY sp.date DESC
     `);
-    return results;
+    return results.rows || [];
   }
 
   async getEquipmentInventory(): Promise<any[]> {
     const results = await db.execute(`SELECT * FROM equipment_inventory ORDER BY equipment_name`);
-    return results;
+    return results.rows || [];
   }
 
   async getBusinessExpenses(): Promise<any[]> {
@@ -660,7 +660,7 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN expense_categories c ON e.category_id = c.id 
       ORDER BY e.expense_date DESC
     `);
-    return results;
+    return results.rows || [];
   }
 
   async getCustomerVisits(): Promise<any[]> {
@@ -670,12 +670,12 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN customers c ON cv.customer_id = c.id 
       ORDER BY cv.visit_date DESC
     `);
-    return results;
+    return results.rows || [];
   }
 
   async getComplianceDocuments(): Promise<any[]> {
     const results = await db.execute(`SELECT * FROM compliance_documents ORDER BY expiry_date`);
-    return results;
+    return results.rows || [];
   }
 
   async getMaintenanceSchedules(): Promise<any[]> {
@@ -685,7 +685,7 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN equipment_inventory ei ON ms.equipment_id = ei.id 
       ORDER BY ms.next_due
     `);
-    return results;
+    return results.rows || [];
   }
 }
 
