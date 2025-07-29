@@ -1,0 +1,52 @@
+Here’s a high‑level breakdown of what’s inside the FantasyCompanions project.  It’s a complete full‑stack application built with Express on the server, Drizzle ORM for the database layer, and a React/Vite front‑end styled with Tailwind.  The goal is to run a gentleman’s club efficiently – everything from scheduling and tip tracking to internal messaging.  I’ll walk through the main modules and explain what each part does so you can rebuild the pieces on Replit.
+
+1. Core concept and roles
+
+The app’s purpose is to be a comprehensive management platform for a gentlemen’s club – streamlining operations, communication and scheduling.  It defines several user roles (owner, manager, house mom/dad, dancer, DJ, bartender, server, barback) and offers role‑based access control (RBAC).  Each role sees only the features relevant to them.  Users authenticate via Replit’s OpenID Connect; managers or owners can invite new users via a registration token, and dancers must complete profile details before gaining full access.
+
+2. Dashboard & real‑time updates
+
+After logging in, everyone lands on a personalised dashboard.  It greets the user, shows the current date/time, and displays metrics cards summarising high‑level statistics.  These metrics are fetched from /api/dashboard/metrics and include counts like dancers on duty, earnings, VIP sessions, etc.  Staff currently working are shown in a live table.  The dashboard uses a WebSocket connection to show notifications in real time – for example, when someone clocks in or a new music request arrives.
+
+3. Scheduling and time clock
+
+Scheduling is a core feature.  Managers and house‑moms can assign shifts; dancers and DJs can view their own schedules and request changes.  The scheduling form enforces shift rules — day shifts can only be Wednesday through Friday and night shifts Tuesday through Sunday.  Users can view schedules in calendar, weekly or list views and filter by date.
+
+Complementing scheduling is the time clock.  Staff select a shift type (day or night) and clock in/out.  The current shift’s duration is displayed live, and the system records breaks and notes.  All clock entries are later used in financial and activity reports.
+
+4. Financial tracking
+
+Dancers, managers and house‑moms can log financial records for tips, house fees, payouts and sales.  The financial page shows daily totals and trends, and adding a new record triggers real‑time updates for managers.  Earnings visibility is sensitive; dancers can decide whether their tip totals are visible to management.  The server exposes /api/financial endpoints for creating and retrieving these records and uses the Drizzle schema to store type, amount, shift type and description.
+
+5. Activity logging (lap dances & VIP rooms)
+
+Although not fully fleshed out in the React UI yet, the database schema and APIs support logging lap dances and VIP room sessions.  Each log entry records the dancer, count or duration, shift type and time clock entry.  Managers and house‑moms can see aggregated counts per shift and day.  VIP rooms themselves are stored in a separate table with availability and current session tracking.
+
+6. Internal messaging & announcements
+
+The platform includes a full messaging system.  Users can send messages to individuals or to groups (e.g., “all DJs” or “all dancers”).  Messages have a subject, content and status (sent/delivered/read).  When a message arrives, the recipient sees a notification badge and can mark it as read.  There’s also an announcement feature: managers or owners can broadcast important notices to everyone or a specific role, which appear in the notification dropdown.
+
+7. Music requests & playlist management
+
+Dancers can submit music requests or playlists to DJs.  A request includes song title, artist, notes and optional schedule time.  DJs view pending requests, approve or decline them, and mark them as played.  There’s a separate playlist module where dancers build playlists (name, description, list of songs) and choose whether they’re public or DJ‑accessible.  DJs can browse available playlists and request to add them to their set.
+
+8. Tasks and staff management
+
+Managers and owners can create tasks with a title, description, assignee, priority and optional due date.  Tasks move through statuses (pending → in_progress → completed → cancelled) and support filters and search.  On the staff page, you can view all employees, invite new ones, edit details (name, role, contact info) and toggle whether they’re active.  The registration module completes the onboarding process for invited staff.
+
+9. Reports & analytics
+
+For managers and owners, the reports section aggregates financial records, activity logs and time clock entries into dashboards.  There are summary cards for total tips, fees, net revenue, lap dance counts and hours worked.  The analytics page lets users log performance metrics (earnings, hours, sales, crowd response, etc.), set personal goals and track progress.  An achievement system unlocks badges when goals are met.
+
+10. Admin control panel
+
+Owners can open the admin control panel to tweak which modules are visible to each role.  For example, they might disable DJ requests for bartenders or hide the admin panel from managers.  Permissions are stored in a JSON structure and submitted via /api/admin/permissions.
+
+11. Extras and extensibility
+
+The app’s schema includes additional tables for inventory alerts, wellness check‑ins, outfit tracking and more, hinting at future features.  These modules aren’t fully implemented in the front‑end yet, but they show how the system could expand (e.g., tracking outfit performance or bartender sales).  The design is modular so that it can be white‑labelled for other venues.
+
+⸻
+
+Recreating on Replit:
+To rebuild this on Replit you’ll want to replicate both the backend API routes and the front‑end pages.  Start by setting up a Node/Express server with authentication (you could switch to another provider if Replit OIDC isn’t available) and define routes similar to those in server/routes.ts (schedules, time‑clock, financial, tasks, messages, music‑requests, analytics, etc.).  Use a PostgreSQL database (or Supabase) with tables matching the Drizzle schema so that you can store users, schedules, financial records and messages.  On the client side, scaffold a React app with Vite and Tailwind, implement the pages described above, and use a WebSocket connection for real‑time updates.  This breakdown should give you a clear roadmap of which features to prioritise when you start building your own version.
