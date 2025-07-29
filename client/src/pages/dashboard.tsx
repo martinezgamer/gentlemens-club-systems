@@ -4,15 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Users, DollarSign, Crown, Music, Plus, UserPlus, Megaphone, BarChart3, Brain } from "lucide-react";
+import { Users, DollarSign, Crown, Music, Plus, UserPlus, Megaphone, BarChart3 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { formatDuration } from "@/lib/utils";
 import Header from "@/components/header";
-import { AIInsightsDashboard } from "@/components/ai-insights-dashboard";
-import { AIChatAssistant } from "@/components/ai-chat-assistant";
-import { AILiveMetrics } from "@/components/ai-live-metrics";
-import { AISmartNotifications } from "@/components/ai-smart-notifications";
+
 import CurrentDancersCard from "@/components/current-dancers-card";
 
 export default function Dashboard() {
@@ -197,37 +194,7 @@ export default function Dashboard() {
           <CurrentDancersCard clubLocation="wiggles_gentlemens_club" />
         </div>
 
-        {/* AI Intelligence Center */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
-          <div className="xl:col-span-1">
-            <AIInsightsDashboard />
-          </div>
-          <div className="xl:col-span-1">
-            <AILiveMetrics />
-          </div>
-          <div className="xl:col-span-1">
-            <AIChatAssistant className="h-[400px]" />
-          </div>
-        </div>
 
-        {/* AI Smart Alerts & Notifications */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2">
-              <Brain className="h-5 w-5 text-purple-600" />
-              AI Smart Alerts
-              <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-xs">
-                Live
-              </Badge>
-            </CardTitle>
-            <CardDescription>
-              Real-time AI insights and actionable recommendations for your club
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AISmartNotifications />
-          </CardContent>
-        </Card>
 
         {/* Quick Actions */}
         <Card>
@@ -268,12 +235,12 @@ export default function Dashboard() {
 
               <Button 
                 variant="outline" 
-                className="flex flex-col items-center p-3 lg:p-6 h-auto space-y-2 lg:space-y-3 border-dashed hover:border-purple-500 hover:bg-purple-50"
+                className="flex flex-col items-center p-3 lg:p-6 h-auto space-y-2 lg:space-y-3 border-dashed hover:border-blue-500 hover:bg-blue-50"
               >
-                <div className="w-8 h-8 lg:w-12 lg:h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <Brain className="text-purple-600 text-sm lg:text-xl" />
+                <div className="w-8 h-8 lg:w-12 lg:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <BarChart3 className="text-blue-600 text-sm lg:text-xl" />
                 </div>
-                <span className="text-xs lg:text-sm font-medium text-gray-700">AI Insights</span>
+                <span className="text-xs lg:text-sm font-medium text-gray-700">View Reports</span>
               </Button>
             </div>
           </CardContent>
