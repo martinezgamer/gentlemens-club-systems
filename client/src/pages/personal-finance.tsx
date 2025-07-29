@@ -27,6 +27,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
 import Header from "@/components/header";
+import { useAuth } from "@/hooks/useAuth";
 
 type Period = 'daily' | 'weekly' | 'bi_weekly' | 'monthly';
 type FinancialType = 'tips' | 'paycheck' | 'bonus' | 'overtime' | 'personal_expense';
@@ -50,6 +51,7 @@ interface PersonalFinancialSummary {
 }
 
 export default function PersonalFinance() {
+  const { user } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('weekly');
   const [addRecordDialogOpen, setAddRecordDialogOpen] = useState(false);
   const [recordType, setRecordType] = useState<FinancialType>('tips');
@@ -59,18 +61,54 @@ export default function PersonalFinance() {
   const [shiftType, setShiftType] = useState<"day" | "night">("night");
   const { toast } = useToast();
 
-  const { data: personalSummary, isLoading: summaryLoading } = useQuery<PersonalFinancialSummary>({
+  // Check if user has access to personal finance features
+  const workerRoles = ['dancer', 'bartender', 'server', 'dj', 'host', 'floor_host', 'front_door', 'barback', 'house_mom', 'house_dad'];
+  const hasAccess = user && workerRoles.includes(user.role as string);
+
+  // Show access denied message for non-workers
+  if (!hasAccess) {
+    return (
+      <>
+        <Header title="Personal Finance" />
+        <div className="max-w-4xl mx-auto">
+          <Card>
+            <CardContent className="p-8 text-center">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
+                  <DollarSign className="w-8 h-8 text-amber-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900">Access Restricted</h2>
+                <p className="text-gray-600 max-w-md">
+                  Personal finance tracking is only available for workers. This feature helps staff members track their personal earnings and expenses.
+                </p>
+                <p className="text-sm text-gray-500">
+                  Your current role: <span className="capitalize">{user?.role?.replace('_', ' ')}</span>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </>
+    );
+  }
+
+  const { data: personalSummary, isLoading: summaryLoading, error: summaryError } = useQuery<PersonalFinancialSummary>({
     queryKey: ['/api/financial/personal/summary', selectedPeriod],
     queryFn: async () => {
       const response = await fetch(`/api/financial/personal/summary?period=${selectedPeriod}`, {
         credentials: 'include'
       });
+      if (!response.ok) {
+        throw new Error('Failed to fetch personal financial summary');
+      }
       return response.json();
-    }
+    },
+    enabled: hasAccess,
   });
 
-  const { data: expensesByCategory } = useQuery<Record<string, number>>({
+  const { data: expensesByCategory, error: expensesError } = useQuery<Record<string, number>>({
     queryKey: ['/api/financial/personal/expenses-by-category'],
+    enabled: hasAccess,
   });
 
   const { data: records } = useQuery<any[]>({

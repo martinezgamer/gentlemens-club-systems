@@ -191,10 +191,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/financial/records', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
       const data = insertFinancialRecordSchema.parse({
         ...req.body,
         userId,
       });
+      
+      // Validate access based on record type and user role
+      const recordType = data.type;
+      const userRole = user.role as string;
+      
+      // Personal expense records - only workers can create for themselves
+      if (recordType === 'personal_expense') {
+        const workerRoles = ['dancer', 'bartender', 'server', 'dj', 'host', 'floor_host', 'front_door', 'barback', 'house_mom', 'house_dad'];
+        if (!workerRoles.includes(userRole)) {
+          return res.status(403).json({ message: "Only workers can create personal expense records" });
+        }
+        data.isPersonal = true;
+      }
+      
+      // Tips, bonus, overtime - workers can create for themselves, managers can create for others
+      if (['tips', 'bonus', 'overtime'].includes(recordType)) {
+        const allowedRoles = ['dancer', 'bartender', 'server', 'dj', 'host', 'floor_host', 'front_door', 'barback', 'house_mom', 'house_dad', 'manager', 'superuser', 'owner'];
+        if (!allowedRoles.includes(userRole)) {
+          return res.status(403).json({ message: "Insufficient permissions to create this record type" });
+        }
+      }
+      
+      // Paychecks - only managers/owners can create
+      if (recordType === 'paycheck') {
+        const managementRoles = ['manager', 'superuser', 'owner'];
+        if (!managementRoles.includes(userRole)) {
+          return res.status(403).json({ message: "Only management can create paycheck records" });
+        }
+      }
+      
+      // House fees, payouts, sales - management only
+      if (['house_fee', 'payout', 'sale'].includes(recordType)) {
+        const managementRoles = ['manager', 'superuser', 'owner', 'house_mom', 'house_dad'];
+        if (!managementRoles.includes(userRole)) {
+          return res.status(403).json({ message: "Only management can create this record type" });
+        }
+      }
       
       const record = await storage.createFinancialRecord(data);
       res.json(record);
@@ -207,7 +250,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/financial/records', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const records = await storage.getFinancialRecords(userId);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Users can only see their own financial records unless they are management
+      const managementRoles = ['manager', 'superuser', 'owner'];
+      const targetUserId = req.query.userId as string;
+      
+      if (targetUserId && targetUserId !== userId && !managementRoles.includes(user.role as string)) {
+        return res.status(403).json({ message: "You can only view your own financial records" });
+      }
+      
+      const records = await storage.getFinancialRecords(targetUserId || userId);
       res.json(records);
     } catch (error) {
       console.error("Error fetching financial records:", error);
@@ -226,10 +283,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Personal Financial Tracking Endpoints
+  // Personal Financial Tracking Endpoints - Workers Only (Not Owners/Managers)
   app.get('/api/financial/personal/summary', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Only allow workers (non-management roles) to access personal finance tracking
+      const workerRoles = ['dancer', 'bartender', 'server', 'dj', 'host', 'floor_host', 'front_door', 'barback', 'house_mom', 'house_dad'];
+      if (!user || !workerRoles.includes(user.role as string)) {
+        return res.status(403).json({ message: "Personal finance tracking is only available for workers" });
+      }
+      
       const period = req.query.period as 'daily' | 'weekly' | 'bi_weekly' | 'monthly' || 'weekly';
       const summary = await storage.getPersonalFinancialSummary(userId, period);
       res.json(summary);
@@ -242,6 +307,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/financial/personal/expenses-by-category', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Only allow workers to access personal expense categories
+      const workerRoles = ['dancer', 'bartender', 'server', 'dj', 'host', 'floor_host', 'front_door', 'barback', 'house_mom', 'house_dad'];
+      if (!user || !workerRoles.includes(user.role as string)) {
+        return res.status(403).json({ message: "Personal expense tracking is only available for workers" });
+      }
+      
       const from = req.query.from ? new Date(req.query.from as string) : undefined;
       const to = req.query.to ? new Date(req.query.to as string) : undefined;
       const expenses = await storage.getPersonalExpensesByCategory(userId, from, to);

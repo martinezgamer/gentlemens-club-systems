@@ -120,7 +120,31 @@ export interface IStorage {
     totalFees: number;
     totalPayouts: number;
     totalSales: number;
+    totalPaychecks: number;
+    totalPersonalExpenses: number;
+    totalBonus: number;
+    totalOvertime: number;
+    netEarnings: number;
   }>;
+  
+  // Personal Financial Tracking - Worker Access Only
+  getPersonalFinancialSummary(userId: string, period: 'daily' | 'weekly' | 'bi_weekly' | 'monthly'): Promise<{
+    periodStart: Date;
+    periodEnd: Date;
+    totalEarnings: number;
+    totalExpenses: number;
+    netIncome: number;
+    breakdown: {
+      tips: number;
+      paychecks: number;
+      bonus: number;
+      overtime: number;
+      personalExpenses: number;
+      workExpenses: number;
+    };
+    expensesByCategory: Record<string, number>;
+  }>;
+  getPersonalExpensesByCategory(userId: string, from?: Date, to?: Date): Promise<Record<string, number>>;
   
   // Messaging operations
   createMessage(message: InsertMessage): Promise<Message>;
@@ -641,7 +665,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  // Personal Financial Tracking Methods
+  // Personal Financial Tracking Methods - Worker Access Only
   async getPersonalFinancialSummary(userId: string, period: 'daily' | 'weekly' | 'bi_weekly' | 'monthly' = 'weekly'): Promise<{
     periodStart: Date;
     periodEnd: Date;
@@ -658,6 +682,13 @@ export class DatabaseStorage implements IStorage {
     };
     expensesByCategory: Record<string, number>;
   }> {
+    // Verify user is a worker before allowing access
+    const user = await this.getUser(userId);
+    const workerRoles = ['dancer', 'bartender', 'server', 'dj', 'host', 'floor_host', 'front_door', 'barback', 'house_mom', 'house_dad'];
+    
+    if (!user || !workerRoles.includes(user.role as string)) {
+      throw new Error("Personal finance tracking is only available for workers");
+    }
     // Calculate period dates
     const now = new Date();
     let periodStart: Date;
@@ -740,9 +771,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPersonalExpensesByCategory(userId: string, from?: Date, to?: Date): Promise<Record<string, number>> {
+    // Verify user is a worker before allowing access
+    const user = await this.getUser(userId);
+    const workerRoles = ['dancer', 'bartender', 'server', 'dj', 'host', 'floor_host', 'front_door', 'barback', 'house_mom', 'house_dad'];
+    
+    if (!user || !workerRoles.includes(user.role as string)) {
+      throw new Error("Personal expense tracking is only available for workers");
+    }
+    
     const conditions = [
       eq(financialRecords.userId, userId),
-      eq(financialRecords.type, 'personal_expense')
+      eq(financialRecords.type, 'personal_expense'),
+      eq(financialRecords.isPersonal, true)
     ];
     
     if (from) conditions.push(gte(financialRecords.createdAt, from));
