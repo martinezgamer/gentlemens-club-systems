@@ -14,7 +14,7 @@ export default function Layout({ children }: LayoutProps) {
       <Sidebar />
       
       {/* Main content area */}
-      <div className={`${
+      <div className={`transition-all duration-300 ${
         isMobile 
           ? 'pt-16' // Top padding for mobile header
           : 'ml-64' // Left margin for desktop sidebar
@@ -22,8 +22,8 @@ export default function Layout({ children }: LayoutProps) {
         <main className={`${
           isMobile 
             ? 'px-4 py-6' // Mobile padding
-            : 'p-8' // Desktop padding
-        }`}>
+            : 'p-6 lg:p-8' // Desktop padding
+        } w-full max-w-none`}>
           {children}
         </main>
       </div>

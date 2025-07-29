@@ -177,7 +177,7 @@ export default function Sidebar() {
 
   // Desktop sidebar
   return (
-    <div className="w-64 bg-white shadow-lg flex-shrink-0 flex flex-col">
+    <div className="fixed left-0 top-0 z-30 h-full w-64 bg-white shadow-lg flex flex-col">
       {/* Logo section */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center space-x-3">
