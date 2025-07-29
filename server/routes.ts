@@ -768,6 +768,162 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI-Enhanced Task Management Routes
+  app.get('/api/tasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const { status, priority, assignedTo, clubLocation } = req.query;
+      
+      let tasks = [];
+      
+      if (clubLocation) {
+        tasks = await storage.getTasksByClub(clubLocation as string);
+      } else if (assignedTo) {
+        tasks = await storage.getTasksByUser(assignedTo as string);
+      } else if (status) {
+        tasks = await storage.getTasksByStatus(status as string);
+      } else if (priority) {
+        tasks = await storage.getTasksByPriority(priority as string);
+      } else {
+        // Role-based filtering
+        if (user?.role === 'superuser') {
+          tasks = await storage.getAllTasks();
+        } else {
+          tasks = await storage.getTasksByClub(user?.clubLocation || undefined);
+        }
+      }
+      
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      res.status(500).json({ message: "Failed to fetch tasks" });
+    }
+  });
+
+  app.post('/api/tasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const taskData = insertTaskSchema.parse({
+        ...req.body,
+        assignedBy: userId,
+      });
+      
+      const task = await storage.createTask(taskData);
+      res.json(task);
+    } catch (error) {
+      console.error("Error creating task:", error);
+      res.status(500).json({ message: "Failed to create task" });
+    }
+  });
+
+  app.patch('/api/tasks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      if (updates.status === 'completed') {
+        const task = await storage.completeTask(id);
+        res.json(task);
+      } else {
+        const task = await storage.updateTask(id, updates);
+        res.json(task);
+      }
+    } catch (error) {
+      console.error("Error updating task:", error);
+      res.status(500).json({ message: "Failed to update task" });
+    }
+  });
+
+  app.delete('/api/tasks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteTask(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      res.status(500).json({ message: "Failed to delete task" });
+    }
+  });
+
+  app.get('/api/tasks/statistics', isAuthenticated, async (req, res) => {
+    try {
+      const stats = await storage.getTaskStatistics();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching task statistics:", error);
+      res.status(500).json({ message: "Failed to fetch task statistics" });
+    }
+  });
+
+  app.get('/api/tasks/overdue', isAuthenticated, async (req, res) => {
+    try {
+      const overdueTasks = await storage.getOverdueTasks();
+      res.json(overdueTasks);
+    } catch (error) {
+      console.error("Error fetching overdue tasks:", error);
+      res.status(500).json({ message: "Failed to fetch overdue tasks" });
+    }
+  });
+
+  // AI-Enhanced Task Features
+  app.post('/api/ai/tasks/enhance', isAuthenticated, async (req, res) => {
+    try {
+      const taskData = req.body;
+      const aiTaskService = await import('./ai-task-service');
+      const enhancement = await aiTaskService.enhanceTaskCreation(taskData);
+      res.json(enhancement);
+    } catch (error) {
+      console.error("AI task enhancement error:", error);
+      res.status(500).json({ message: "Failed to enhance task" });
+    }
+  });
+
+  app.get('/api/ai/tasks/workload-analysis', isAuthenticated, async (req, res) => {
+    try {
+      const tasks = await storage.getAllTasks();
+      const staff = await storage.getAllStaff();
+      const aiTaskService = await import('./ai-task-service');
+      const analysis = await aiTaskService.analyzeTaskWorkload(tasks, staff);
+      res.json(analysis);
+    } catch (error) {
+      console.error("AI workload analysis error:", error);
+      res.status(500).json({ message: "Failed to analyze workload" });
+    }
+  });
+
+  app.get('/api/ai/tasks/insights', isAuthenticated, async (req, res) => {
+    try {
+      const allTasks = await storage.getAllTasks();
+      const completedTasks = await storage.getTasksByStatus('completed');
+      const aiTaskService = await import('./ai-task-service');
+      const insights = await aiTaskService.generateTaskInsights(allTasks, completedTasks);
+      res.json(insights);
+    } catch (error) {
+      console.error("AI task insights error:", error);
+      res.status(500).json({ message: "Failed to generate task insights" });
+    }
+  });
+
+  app.post('/api/ai/tasks/suggestions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const { clubLocation } = req.body;
+      
+      const recentActivity = []; // TODO: Gather recent activity data
+      const aiTaskService = await import('./ai-task-service');
+      const suggestions = await aiTaskService.generateTaskSuggestions(
+        clubLocation || user?.clubLocation || 'wiggles_gentlemens_club',
+        recentActivity
+      );
+      res.json(suggestions);
+    } catch (error) {
+      console.error("AI task suggestions error:", error);
+      res.status(500).json({ message: "Failed to generate task suggestions" });
+    }
+  });
+
   // Real-time AI Insights Endpoint
   app.get('/api/ai/live-insights', isAuthenticated, async (req, res) => {
     try {

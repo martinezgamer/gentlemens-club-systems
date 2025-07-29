@@ -61,6 +61,27 @@ export interface IStorage {
   createStaffNote(note: { staffId: string; noteType: string; title: string; content: string; isPrivate?: boolean; createdBy: string; clubLocation: string; }): Promise<any>;
   getStaffNotes(staffId?: string): Promise<any[]>;
   
+  // Task management with AI enhancements
+  getAllTasks(): Promise<Task[]>;
+  getTasksByUser(userId?: string): Promise<Task[]>;
+  getTasksByClub(clubLocation?: string): Promise<Task[]>;
+  getTasksByStatus(status: string): Promise<Task[]>;
+  getTasksByPriority(priority: string): Promise<Task[]>;
+  createTask(task: InsertTask): Promise<Task>;
+  updateTask(id: string, updates: Partial<Task>): Promise<Task>;
+  deleteTask(id: string): Promise<void>;
+  completeTask(id: string): Promise<Task>;
+  getOverdueTasks(): Promise<Task[]>;
+  getTaskStatistics(): Promise<{
+    total: number;
+    pending: number;
+    inProgress: number;
+    completed: number;
+    overdue: number;
+    byPriority: { [key: string]: number };
+    byAssignee: { [key: string]: number };
+  }>;
+  
   // Dancer management (independent contractors)
   getAllDancers(): Promise<SelectDancer[]>;
   getDancersByClub(clubLocation?: string): Promise<SelectDancer[]>;
@@ -643,13 +664,118 @@ export class DatabaseStorage implements IStorage {
 
 
   // Task operations
+  // Enhanced Task Management Implementation
   async createTask(task: InsertTask): Promise<Task> {
-    const [result] = await db.insert(tasks).values(task).returning();
+    const [result] = await db.insert(tasks).values({
+      ...task,
+      updatedAt: new Date()
+    }).returning();
     return result;
   }
 
   async getAllTasks(): Promise<Task[]> {
-    return await db.select().from(tasks);
+    return await db.select().from(tasks).orderBy(desc(tasks.createdAt));
+  }
+
+  async getTasksByUser(userId?: string): Promise<Task[]> {
+    if (!userId) return await this.getAllTasks();
+    
+    return await db.select().from(tasks)
+      .where(eq(tasks.assignedTo, userId))
+      .orderBy(desc(tasks.createdAt));
+  }
+
+  async getTasksByClub(clubLocation?: string): Promise<Task[]> {
+    if (!clubLocation) return await this.getAllTasks();
+    
+    return await db.select().from(tasks)
+      .where(eq(tasks.clubLocation, clubLocation as any))
+      .orderBy(desc(tasks.createdAt));
+  }
+
+  async getTasksByStatus(status: string): Promise<Task[]> {
+    return await db.select().from(tasks)
+      .where(eq(tasks.status, status as any))
+      .orderBy(desc(tasks.createdAt));
+  }
+
+  async getTasksByPriority(priority: string): Promise<Task[]> {
+    return await db.select().from(tasks)
+      .where(eq(tasks.priority, priority as any))
+      .orderBy(desc(tasks.createdAt));
+  }
+
+  async updateTask(id: string, updates: Partial<Task>): Promise<Task> {
+    const [result] = await db.update(tasks)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(tasks.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteTask(id: string): Promise<void> {
+    await db.delete(tasks).where(eq(tasks.id, id));
+  }
+
+  async completeTask(id: string): Promise<Task> {
+    const [result] = await db.update(tasks)
+      .set({ 
+        status: 'completed' as any,
+        completedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(tasks.id, id))
+      .returning();
+    return result;
+  }
+
+  async getOverdueTasks(): Promise<Task[]> {
+    const now = new Date();
+    return await db.select().from(tasks)
+      .where(
+        and(
+          lte(tasks.dueDate, now),
+          ne(tasks.status, 'completed' as any)
+        )
+      )
+      .orderBy(tasks.dueDate);
+  }
+
+  async getTaskStatistics(): Promise<{
+    total: number;
+    pending: number;
+    inProgress: number;
+    completed: number;
+    overdue: number;
+    byPriority: { [key: string]: number };
+    byAssignee: { [key: string]: number };
+  }> {
+    const allTasks = await this.getAllTasks();
+    const now = new Date();
+    
+    const stats = {
+      total: allTasks.length,
+      pending: allTasks.filter(t => t.status === 'pending').length,
+      inProgress: allTasks.filter(t => t.status === 'in_progress').length,
+      completed: allTasks.filter(t => t.status === 'completed').length,
+      overdue: allTasks.filter(t => t.dueDate && new Date(t.dueDate) < now && t.status !== 'completed').length,
+      byPriority: {} as { [key: string]: number },
+      byAssignee: {} as { [key: string]: number }
+    };
+
+    // Calculate priority distribution
+    for (const task of allTasks) {
+      const priority = task.priority || 'medium';
+      stats.byPriority[priority] = (stats.byPriority[priority] || 0) + 1;
+    }
+
+    // Calculate assignee distribution
+    for (const task of allTasks) {
+      const assignee = task.assignedTo || 'unassigned';
+      stats.byAssignee[assignee] = (stats.byAssignee[assignee] || 0) + 1;
+    }
+
+    return stats;
   }
 
   async getTasks(assignedTo?: string, status?: string): Promise<(Task & { assignee?: User; creator: User })[]> {

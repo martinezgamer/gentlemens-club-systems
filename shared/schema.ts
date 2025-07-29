@@ -264,9 +264,19 @@ export const tasks = pgTable("tasks", {
   assignedBy: varchar("assigned_by").references(() => users.id).notNull(),
   status: taskStatusEnum("status").default("pending"),
   priority: taskPriorityEnum("priority").default("medium"),
+  category: varchar("category").default("general"),
+  tags: text("tags"), // JSON array of tags
+  clubLocation: clubLocationEnum("club_location"),
+  estimatedTime: integer("estimated_time_minutes"), // estimated completion time in minutes
+  actualTime: integer("actual_time_minutes"), // actual completion time
   dueDate: timestamp("due_date"),
+  startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
+  notes: text("notes"),
+  attachments: text("attachments"), // JSON array of file URLs
+  aiSuggestions: text("ai_suggestions"), // JSON object with AI recommendations
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Music requests
