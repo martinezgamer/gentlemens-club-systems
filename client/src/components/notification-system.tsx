@@ -38,18 +38,15 @@ export default function NotificationSystem() {
   const [isOpen, setIsOpen] = useState(false);
 
   // Get notifications
-  const { data: notifications = [], refetch: refetchNotifications } = useQuery({
+  const { data: notifications = [], refetch: refetchNotifications } = useQuery<Notification[]>({
     queryKey: ['/api/notifications'],
-    queryFn: async () => await apiRequest('/api/notifications'),
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   // Mark notification as read
   const markAsRead = useMutation({
     mutationFn: async (notificationId: string) => {
-      return await apiRequest(`/api/notifications/${notificationId}/read`, {
-        method: 'PUT'
-      });
+      return await apiRequest('PUT', `/api/notifications/${notificationId}/read`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
@@ -59,9 +56,7 @@ export default function NotificationSystem() {
   // Mark all as read
   const markAllAsRead = useMutation({
     mutationFn: async () => {
-      return await apiRequest('/api/notifications/mark-all-read', {
-        method: 'PUT'
-      });
+      return await apiRequest('PUT', '/api/notifications/mark-all-read');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });

@@ -43,17 +43,14 @@ export default function PublicDancerApplication() {
       stageName: "",
       experience: "",
       availability: "",
-      clubLocation: "club_1",
+      clubLocation: "wiggles_gentlemens_club" as const,
       idDocumentType: "",
     },
   });
 
   const createApplication = useMutation({
     mutationFn: async (data: InsertDancerApplication & { idDocumentUrl?: string }) => {
-      return await apiRequest("/api/dancer-applications/public", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest("POST", "/api/dancer-applications/public", data);
     },
     onSuccess: () => {
       setSubmitted(true);
@@ -77,22 +74,20 @@ export default function PublicDancerApplication() {
     
     setLoadingAI(true);
     try {
-      const response = await apiRequest("/api/ai/application-help", {
-        method: "POST",
-        body: JSON.stringify({
-          field,
-          value: currentValue,
-          context: {
-            firstName: form.getValues("firstName"),
-            lastName: form.getValues("lastName"),
-          }
-        }),
+      const response = await apiRequest("POST", "/api/ai/application-help", {
+        field,
+        value: currentValue,
+        context: {
+          firstName: form.getValues("firstName"),
+          lastName: form.getValues("lastName"),
+        }
       });
       
-      if (response.suggestion) {
+      const data = await response.json();
+      if (data.suggestion) {
         setAiSuggestions(prev => ({
           ...prev,
-          [field]: response.suggestion
+          [field]: data.suggestion
         }));
       }
     } catch (error) {
@@ -146,7 +141,7 @@ export default function PublicDancerApplication() {
 
       const applicationData = {
         ...data,
-        ...(idDocumentUrl && { idDocumentUrl }),
+        ...(idDocumentUrl && { idDocumentUrl: idDocumentUrl }),
       };
 
       createApplication.mutate(applicationData);
@@ -466,7 +461,7 @@ export default function PublicDancerApplication() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Document Type *</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
                             <FormControl>
                               <SelectTrigger className="bg-white">
                                 <SelectValue placeholder="Select document type" />
@@ -524,8 +519,9 @@ export default function PublicDancerApplication() {
                           <Textarea 
                             placeholder="Describe any relevant experience in the entertainment industry, customer service, performance arts, or related fields..."
                             className="min-h-[120px] bg-white"
-                            {...field} 
-                            onBlur={() => getAISuggestions('experience', field.value)}
+                            {...field}
+                            value={field.value || ""}
+                            onBlur={() => getAISuggestions('experience', field.value || "")}
                           />
                           {aiSuggestions.experience && (
                             <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
@@ -573,8 +569,9 @@ export default function PublicDancerApplication() {
                           <Textarea 
                             placeholder="Describe your availability including preferred days, times, and any scheduling constraints..."
                             className="min-h-[100px] bg-white"
-                            {...field} 
-                            onBlur={() => getAISuggestions('availability', field.value)}
+                            {...field}
+                            value={field.value || ""}
+                            onBlur={() => getAISuggestions('availability', field.value || "")}
                           />
                           {aiSuggestions.availability && (
                             <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">

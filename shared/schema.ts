@@ -274,7 +274,7 @@ export const insertDancerApplicationSchema = createInsertSchema(dancerApplicatio
   phoneNumber: z.string().min(10),
   ssn: z.string().regex(/^\d{3}-\d{2}-\d{4}$/, "SSN must be in XXX-XX-XXXX format").optional(),
   dateOfBirth: z.date().optional(),
-  clubLocation: z.enum(["club_1", "club_2"]),
+  clubLocation: z.enum(["wiggles_gentlemens_club", "fantasy_gentlemens_club"]),
 }).omit({ 
   id: true, 
   createdAt: true, 
