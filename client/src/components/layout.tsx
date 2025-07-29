@@ -21,7 +21,11 @@ export default function Layout({ children }: LayoutProps) {
           : 'ml-64' // Left margin for desktop sidebar
       } min-h-screen`}>
         {/* Notification system positioned in top right */}
-        <div className="fixed top-4 right-4 z-50">
+        <div className={`fixed z-40 ${
+          isMobile 
+            ? 'top-4 right-16' // Position to left of mobile menu button
+            : 'top-4 right-4'  // Standard desktop position
+        }`}>
           <NotificationSystem />
         </div>
         
