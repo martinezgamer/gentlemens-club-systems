@@ -149,6 +149,8 @@ export default function Staff() {
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
       case 'fantasy_gentlemens_club':
         return 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300';
+      case 'both_clubs':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
     }
@@ -160,8 +162,10 @@ export default function Staff() {
         return 'Wiggles';
       case 'fantasy_gentlemens_club':
         return 'Fantasy';
-      default:
+      case 'both_clubs':
         return 'Both Clubs';
+      default:
+        return 'Unassigned';
     }
   };
 
@@ -225,6 +229,7 @@ export default function Staff() {
                   <SelectItem value="all">All Clubs</SelectItem>
                   <SelectItem value="wiggles_gentlemens_club">Wiggles Gentlemen's Club</SelectItem>
                   <SelectItem value="fantasy_gentlemens_club">Fantasy Gentlemen's Club</SelectItem>
+                  <SelectItem value="both_clubs">Both Clubs</SelectItem>
                 </SelectContent>
               </Select>
             )}
@@ -328,7 +333,7 @@ export default function Staff() {
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Wiggles Staff</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {staff.filter((s: User) => s.clubLocation === 'wiggles_gentlemens_club').length}
+                    {staff.filter((s: User) => s.clubLocation === 'wiggles_gentlemens_club' || s.clubLocation === 'both_clubs').length}
                   </p>
                   <p className="text-xs text-purple-600 dark:text-purple-400">Club location</p>
                 </div>
@@ -344,9 +349,25 @@ export default function Staff() {
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Fantasy Staff</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {staff.filter((s: User) => s.clubLocation === 'fantasy_gentlemens_club').length}
+                    {staff.filter((s: User) => s.clubLocation === 'fantasy_gentlemens_club' || s.clubLocation === 'both_clubs').length}
                   </p>
                   <p className="text-xs text-pink-600 dark:text-pink-400">Club location</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="hover:shadow-lg transition-shadow duration-200">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+                  <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Both Clubs Staff</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {staff.filter((s: User) => s.clubLocation === 'both_clubs').length}
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400">Works at both locations</p>
                 </div>
               </div>
             </CardContent>
@@ -500,6 +521,7 @@ export default function Staff() {
                       <SelectContent>
                         <SelectItem value="wiggles_gentlemens_club">Wiggles Gentlemen's Club</SelectItem>
                         <SelectItem value="fantasy_gentlemens_club">Fantasy Gentlemen's Club</SelectItem>
+                        <SelectItem value="both_clubs">Both Clubs</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

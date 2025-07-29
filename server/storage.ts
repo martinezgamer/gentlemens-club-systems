@@ -231,8 +231,19 @@ export class DatabaseStorage implements IStorage {
       return await this.getAllStaff();
     }
     
+    // If requesting "both_clubs", return only staff assigned to both clubs
+    if (clubLocation === 'both_clubs') {
+      return await db.select().from(users)
+        .where(eq(users.clubLocation, 'both_clubs' as any))
+        .orderBy(users.firstName);
+    }
+    
+    // For specific clubs, return staff assigned to that club OR both clubs
     return await db.select().from(users)
-      .where(eq(users.clubLocation, clubLocation as any))
+      .where(or(
+        eq(users.clubLocation, clubLocation as any),
+        eq(users.clubLocation, 'both_clubs' as any)
+      ))
       .orderBy(users.firstName);
   }
 

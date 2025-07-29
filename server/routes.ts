@@ -52,7 +52,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           firstName: 'Superuser',
           lastName: 'Admin',
           role: 'superuser',
-          clubLocation: 'wiggles_gentlemens_club',
+          clubLocation: 'both_clubs',
           isActive: true,
           profileCompleted: true,
         });

@@ -243,8 +243,21 @@ Preferred communication style: Simple, everyday language.
 - Superuser sees all locations, regular staff filtered to assigned club
 - Proper role-based permissions for approve/reject actions
 
-### Latest Implementation: Floor Host Role Addition (Complete)
+### Latest Implementation: Both Clubs Staff Assignment System (Complete)
 **Date:** January 29, 2025
+
+✅ **Both Clubs Assignment Feature:**
+- Added "both_clubs" to club location enum in database schema
+- Updated all club assignment dropdowns to include "Both Clubs" option
+- Enhanced staff filtering logic to handle both clubs assignments
+- Updated server-side storage methods for proper filtering
+- Staff assigned to "both_clubs" appear in both Wiggles and Fantasy staff counts
+
+✅ **Enhanced Staff Management:**
+- Added "Both Clubs Staff" overview card showing cross-location assignments
+- Updated superuser default assignment to "both_clubs" for full access
+- Improved badge coloring system with blue for both clubs assignments
+- Server-side filtering now shows both club staff when filtering by specific club
 
 ✅ **Floor Host Role Integration:**
 - Added "floor_host" to staff role enum in database schema
