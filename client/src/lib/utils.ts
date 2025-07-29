@@ -12,10 +12,10 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export function formatDuration(startTime: string | Date): string {
+export function formatDuration(startTime: string | Date, endTime?: string | Date): string {
   const start = new Date(startTime);
-  const now = new Date();
-  const diff = now.getTime() - start.getTime();
+  const end = endTime ? new Date(endTime) : new Date();
+  const diff = end.getTime() - start.getTime();
   
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));

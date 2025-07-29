@@ -911,7 +911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const { clubLocation } = req.body;
       
-      const recentActivity = []; // TODO: Gather recent activity data
+      const recentActivity: any[] = []; // TODO: Gather recent activity data
       const aiTaskService = await import('./ai-task-service');
       const suggestions = await aiTaskService.generateTaskSuggestions(
         clubLocation || user?.clubLocation || 'wiggles_gentlemens_club',

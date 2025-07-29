@@ -7,17 +7,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Clock } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { formatDuration } from "@/lib/utils";
 import Header from "@/components/header";
+
+interface TimeClockEntry {
+  id: string;
+  userId: string;
+  clockInTime: string;
+  clockOutTime?: string;
+  shiftType: string;
+  notes?: string;
+}
 
 export default function TimeClock() {
   const [selectedShift, setSelectedShift] = useState<"day" | "night">("night");
   const { toast } = useToast();
 
-  const { data: activeEntry } = useQuery({
+  const { data: activeEntry } = useQuery<TimeClockEntry | null>({
     queryKey: ["/api/timeclock/active"],
   });
 
-  const { data: entries } = useQuery({
+  const { data: entries = [] } = useQuery<TimeClockEntry[]>({
     queryKey: ["/api/timeclock/entries"],
   });
 
@@ -55,14 +65,7 @@ export default function TimeClock() {
     },
   });
 
-  const formatDuration = (start: string, end?: string) => {
-    const startTime = new Date(start);
-    const endTime = end ? new Date(end) : new Date();
-    const diff = endTime.getTime() - startTime.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours}h ${minutes}m`;
-  };
+
 
   const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString([], {
@@ -122,25 +125,25 @@ export default function TimeClock() {
                     <div className="flex items-center space-x-4 mb-4">
                       <div className="w-3 h-3 bg-success rounded-full animate-pulse"></div>
                       <p className="text-success font-medium capitalize">
-                        Currently on {activeEntry.shiftType} Shift
+                        Currently on {activeEntry?.shiftType} Shift
                       </p>
                     </div>
                     <div className="flex items-center space-x-6 mb-4">
                       <div>
                         <p className="text-sm text-gray-600">Clocked in at</p>
                         <p className="text-lg font-semibold text-gray-900">
-                          {formatTime(activeEntry.clockInTime)}
+                          {activeEntry?.clockInTime && formatTime(activeEntry.clockInTime)}
                         </p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Current duration</p>
                         <p className="text-lg font-semibold text-gray-900">
-                          {formatDuration(activeEntry.clockInTime)}
+                          {activeEntry?.clockInTime && formatDuration(activeEntry.clockInTime)}
                         </p>
                       </div>
                     </div>
                     <Button 
-                      onClick={() => clockOutMutation.mutate()}
+                      onClick={() => clockOutMutation.mutate(undefined)}
                       disabled={clockOutMutation.isPending}
                       variant="destructive"
                     >
@@ -188,8 +191,8 @@ export default function TimeClock() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {entries?.length ? (
-                    entries.map((entry: any) => (
+                  {entries.length > 0 ? (
+                    entries.map((entry: TimeClockEntry) => (
                       <tr key={entry.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {formatDate(entry.clockInTime)}

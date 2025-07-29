@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Users, DollarSign, Crown, Music, Plus, UserPlus, Megaphone, BarChart3, Brain } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { formatDuration } from "@/lib/utils";
 import Header from "@/components/header";
 import { AIInsightsDashboard } from "@/components/ai-insights-dashboard";
 import { AIChatAssistant } from "@/components/ai-chat-assistant";
@@ -51,14 +52,7 @@ export default function Dashboard() {
     }
   }, [lastMessage, refetchMetrics, refetchStaff]);
 
-  const formatDuration = (clockInTime: string) => {
-    const start = new Date(clockInTime);
-    const now = new Date();
-    const diff = now.getTime() - start.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours}h ${minutes}m`;
-  };
+
 
   return (
     <>
