@@ -1,18 +1,29 @@
 import { ReactNode } from "react";
 import Sidebar from "./sidebar";
-import Header from "./header";
+import { useMobile } from "@/hooks/use-mobile";
 
 interface LayoutProps {
   children: ReactNode;
 }
 
 export default function Layout({ children }: LayoutProps) {
+  const isMobile = useMobile();
+
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto p-6">
+      
+      {/* Main content area */}
+      <div className={`${
+        isMobile 
+          ? 'pt-16' // Top padding for mobile header
+          : 'ml-64' // Left margin for desktop sidebar
+      } min-h-screen`}>
+        <main className={`${
+          isMobile 
+            ? 'px-4 py-6' // Mobile padding
+            : 'p-8' // Desktop padding
+        }`}>
           {children}
         </main>
       </div>
