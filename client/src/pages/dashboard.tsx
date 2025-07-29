@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Users, DollarSign, Crown, Music, Plus, UserPlus, Megaphone, BarChart3 } from "lucide-react";
+import { Users, DollarSign, Crown, Music, Plus, UserPlus, Megaphone, BarChart3, Brain } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import Header from "@/components/header";
+import { AIInsightsDashboard } from "@/components/ai-insights-dashboard";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -195,6 +196,9 @@ export default function Dashboard() {
           </Card>
         </div>
 
+        {/* AI Intelligence Center */}
+        <AIInsightsDashboard className="lg:col-span-2" />
+
         {/* Quick Actions */}
         <Card>
           <CardHeader className="pb-3 lg:pb-6">
@@ -237,9 +241,9 @@ export default function Dashboard() {
                 className="flex flex-col items-center p-3 lg:p-6 h-auto space-y-2 lg:space-y-3 border-dashed hover:border-purple-500 hover:bg-purple-50"
               >
                 <div className="w-8 h-8 lg:w-12 lg:h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <BarChart3 className="text-purple-600 text-sm lg:text-xl" />
+                  <Brain className="text-purple-600 text-sm lg:text-xl" />
                 </div>
-                <span className="text-xs lg:text-sm font-medium text-gray-700">View Reports</span>
+                <span className="text-xs lg:text-sm font-medium text-gray-700">AI Insights</span>
               </Button>
             </div>
           </CardContent>

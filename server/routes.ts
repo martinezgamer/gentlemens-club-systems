@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import * as aiService from "./ai-service";
 import { insertFinancialRecordSchema, insertTimeClockSchema, insertTaskSchema, insertMessageSchema, insertMusicRequestSchema, insertScheduleSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -409,6 +410,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating staff:", error);
       res.status(500).json({ message: "Failed to update staff" });
+    }
+  });
+
+  // AI-Enhanced Features
+  app.get('/api/ai/schedule-insights', isAuthenticated, async (req, res) => {
+    try {
+      const schedules = await storage.getAllSchedules();
+      const allUsers = await storage.getAllUsers();
+      const insights = await aiService.optimizeSchedule(schedules, allUsers);
+      res.json(insights);
+    } catch (error) {
+      console.error("AI schedule insights error:", error);
+      res.status(500).json({ message: "Failed to generate schedule insights" });
+    }
+  });
+
+  app.get('/api/ai/financial-analysis', isAuthenticated, async (req, res) => {
+    try {
+      const financialRecords = await storage.getAllFinancialRecords();
+      const analysis = await aiService.analyzeFinancialData(financialRecords);
+      res.json(analysis);
+    } catch (error) {
+      console.error("AI financial analysis error:", error);
+      res.status(500).json({ message: "Failed to generate financial analysis" });
+    }
+  });
+
+  app.get('/api/ai/staff-performance', isAuthenticated, async (req, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      const timeClockEntries = await storage.getAllTimeClockEntries();
+      const performanceData = allUsers.map(user => ({
+        ...user,
+        clockEntries: timeClockEntries.filter(entry => entry.userId === user.id)
+      }));
+      const analysis = await aiService.analyzeStaffPerformance(performanceData);
+      res.json(analysis);
+    } catch (error) {
+      console.error("AI staff performance error:", error);
+      res.status(500).json({ message: "Failed to generate staff performance analysis" });
+    }
+  });
+
+  app.get('/api/ai/customer-insights', isAuthenticated, async (req, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      const customerData = allUsers.filter(user => user.role === 'customer');
+      const insights = await aiService.analyzeCustomerData(customerData);
+      res.json(insights);
+    } catch (error) {
+      console.error("AI customer insights error:", error);
+      res.status(500).json({ message: "Failed to generate customer insights" });
+    }
+  });
+
+  app.post('/api/ai/music-playlist', isAuthenticated, async (req, res) => {
+    try {
+      const { timeOfDay, crowdSize, specialEvents } = req.body;
+      const musicRequests = await storage.getAllMusicRequests();
+      const context = {
+        timeOfDay: timeOfDay || new Date().getHours().toString(),
+        crowdSize: crowdSize || 50,
+        specialEvents: specialEvents || [],
+        previousRequests: musicRequests
+      };
+      const playlist = await aiService.generateMusicPlaylist(context);
+      res.json(playlist);
+    } catch (error) {
+      console.error("AI music playlist error:", error);
+      res.status(500).json({ message: "Failed to generate music playlist" });
+    }
+  });
+
+  app.get('/api/ai/task-prioritization', isAuthenticated, async (req, res) => {
+    try {
+      const tasks = await storage.getAllTasks();
+      const prioritized = await aiService.prioritizeTasks(tasks);
+      res.json(prioritized);
+    } catch (error) {
+      console.error("AI task prioritization error:", error);
+      res.status(500).json({ message: "Failed to prioritize tasks" });
+    }
+  });
+
+  app.get('/api/ai/message-sentiment', isAuthenticated, async (req, res) => {
+    try {
+      const messages = await storage.getAllMessages();
+      const sentiment = await aiService.analyzeMessageSentiment(messages);
+      res.json(sentiment);
+    } catch (error) {
+      console.error("AI message sentiment error:", error);
+      res.status(500).json({ message: "Failed to analyze message sentiment" });
+    }
+  });
+
+  app.get('/api/ai/business-intelligence', isAuthenticated, async (req, res) => {
+    try {
+      const [schedules, financial, staff, customers, tasks] = await Promise.all([
+        storage.getAllSchedules(),
+        storage.getAllFinancialRecords(),
+        storage.getAllUsers(),
+        storage.getAllUsers().then(users => users.filter(u => u.role === 'customer')),
+        storage.getAllTasks()
+      ]);
+      
+      const intelligence = await aiService.generateBusinessIntelligence({
+        schedules,
+        financial,
+        staff,
+        customers,
+        tasks
+      });
+      res.json(intelligence);
+    } catch (error) {
+      console.error("AI business intelligence error:", error);
+      res.status(500).json({ message: "Failed to generate business intelligence" });
     }
   });
 

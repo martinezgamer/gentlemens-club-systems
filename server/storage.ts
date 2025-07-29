@@ -52,12 +52,14 @@ export interface IStorage {
   clockIn(entry: InsertTimeClockEntry): Promise<TimeClockEntry>;
   clockOut(userId: string): Promise<TimeClockEntry>;
   getTimeClockEntries(userId: string): Promise<TimeClockEntry[]>;
+  getAllTimeClockEntries(): Promise<TimeClockEntry[]>;
   getActiveTimeClockEntry(userId: string): Promise<TimeClockEntry | undefined>;
   getCurrentStaff(): Promise<(TimeClockEntry & { user: User })[]>;
   
   // Financial operations
   createFinancialRecord(record: InsertFinancialRecord): Promise<FinancialRecord>;
   getFinancialRecords(userId?: string, from?: Date, to?: Date): Promise<(FinancialRecord & { user: User })[]>;
+  getAllFinancialRecords(): Promise<FinancialRecord[]>;
   getFinancialSummary(userId?: string, from?: Date, to?: Date): Promise<{
     totalTips: number;
     totalFees: number;
@@ -68,11 +70,13 @@ export interface IStorage {
   // Messaging operations
   createMessage(message: InsertMessage): Promise<Message>;
   getMessagesByUserId(userId: string): Promise<(Message & { sender: User; receiver?: User })[]>;
+  getAllMessages(): Promise<Message[]>;
   getUnreadMessagesCount(userId: string): Promise<number>;
   markMessageAsRead(id: string): Promise<Message>;
   
   // Task operations
   createTask(task: InsertTask): Promise<Task>;
+  getAllTasks(): Promise<Task[]>;
   getTasks(assignedTo?: string, status?: string): Promise<(Task & { assignee?: User; creator: User })[]>;
   updateTaskStatus(id: string, status: string): Promise<Task>;
   
@@ -86,6 +90,7 @@ export interface IStorage {
   // Music request operations
   createMusicRequest(request: InsertMusicRequest): Promise<MusicRequest>;
   getMusicRequests(djId?: string): Promise<(MusicRequest & { requester: User; dj?: User })[]>;
+  getAllMusicRequests(): Promise<MusicRequest[]>;
   updateMusicRequest(id: string, updates: Partial<MusicRequest>): Promise<MusicRequest>;
   
   // Activity log operations
@@ -211,6 +216,10 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(timeClockEntries.clockInTime));
   }
 
+  async getAllTimeClockEntries(): Promise<TimeClockEntry[]> {
+    return await db.select().from(timeClockEntries);
+  }
+
   async getActiveTimeClockEntry(userId: string): Promise<TimeClockEntry | undefined> {
     const [entry] = await db
       .select()
@@ -300,6 +309,10 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  async getAllFinancialRecords(): Promise<FinancialRecord[]> {
+    return await db.select().from(financialRecords);
+  }
+
   // Messaging operations
   async createMessage(message: InsertMessage): Promise<Message> {
     const [result] = await db.insert(messages).values(message).returning();
@@ -337,6 +350,10 @@ export class DatabaseStorage implements IStorage {
     return result?.count || 0;
   }
 
+  async getAllMessages(): Promise<Message[]> {
+    return await db.select().from(messages);
+  }
+
   async markMessageAsRead(id: string): Promise<Message> {
     const [result] = await db
       .update(messages)
@@ -350,6 +367,10 @@ export class DatabaseStorage implements IStorage {
   async createTask(task: InsertTask): Promise<Task> {
     const [result] = await db.insert(tasks).values(task).returning();
     return result;
+  }
+
+  async getAllTasks(): Promise<Task[]> {
+    return await db.select().from(tasks);
   }
 
   async getTasks(assignedTo?: string, status?: string): Promise<(Task & { assignee?: User; creator: User })[]> {
@@ -462,6 +483,10 @@ export class DatabaseStorage implements IStorage {
       requester: row.users!,
       dj: row.users || undefined
     }));
+  }
+
+  async getAllMusicRequests(): Promise<MusicRequest[]> {
+    return await db.select().from(musicRequests);
   }
 
   async updateMusicRequest(id: string, updates: Partial<MusicRequest>): Promise<MusicRequest> {
