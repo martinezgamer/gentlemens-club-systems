@@ -51,14 +51,14 @@ export default function Sidebar() {
           const isActive = location === item.href;
           return (
             <Link key={item.name} href={item.href}>
-              <a className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+              <div className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors cursor-pointer ${
                 isActive 
                   ? 'bg-primary text-white' 
                   : 'text-gray-700 hover:bg-gray-100'
               }`}>
                 <item.icon size={20} />
                 <span>{item.name}</span>
-              </a>
+              </div>
             </Link>
           );
         })}
@@ -70,14 +70,14 @@ export default function Sidebar() {
               const isActive = location === item.href;
               return (
                 <Link key={item.name} href={item.href}>
-                  <a className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                  <div className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors cursor-pointer ${
                     isActive 
                       ? 'bg-primary text-white' 
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}>
                     <item.icon size={20} />
                     <span>{item.name}</span>
-                  </a>
+                  </div>
                 </Link>
               );
             })}
