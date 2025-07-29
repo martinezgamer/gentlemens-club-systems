@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { enUS } from "date-fns/locale";
-import { Plus, Calendar as CalendarIcon, Users, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Users, Clock, ChevronLeft, ChevronRight, Wand2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertScheduleSchema, type InsertSchedule } from "@shared/schema";
@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import Header from "@/components/header";
+import ScheduleWizard from "@/components/schedule-wizard";
 
 // Big Calendar localizer setup
 const locales = { 'en-US': enUS };
@@ -58,6 +59,7 @@ export default function Schedule() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<'month' | 'week' | 'day'>('month');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
 
   // Fetch schedules
   const { data: schedules, refetch: refetchSchedules } = useQuery({
@@ -150,7 +152,27 @@ export default function Schedule() {
     createScheduleMutation.mutate(data);
   };
 
-  const isManager = user && (user.role === 'owner' || user.role === 'manager' || user.role === 'house_mom' || user.role === 'house_dad');
+  // Handle wizard save
+  const handleWizardSave = async (schedules: any[]) => {
+    try {
+      for (const schedule of schedules) {
+        await apiRequest("/api/schedules", "POST", schedule);
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/schedules"] });
+      toast({
+        title: "Success",
+        description: `${schedules.length} schedules created successfully`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create schedules",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const isManager = user?.role === 'owner' || user?.role === 'manager' || user?.role === 'house_mom' || user?.role === 'house_dad';
 
   return (
     <>
@@ -193,14 +215,25 @@ export default function Schedule() {
             </div>
 
             {isManager && (
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="flex items-center gap-2">
-                    <Plus className="w-4 h-4" />
-                    <span className="hidden sm:inline">Create Schedule</span>
-                    <span className="sm:hidden">Create</span>
-                  </Button>
-                </DialogTrigger>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setIsWizardOpen(true)}
+                  className="flex items-center gap-2"
+                  variant="default"
+                >
+                  <Wand2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Schedule Wizard</span>
+                  <span className="sm:hidden">Wizard</span>
+                </Button>
+                
+                <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="flex items-center gap-2" variant="outline">
+                      <Plus className="w-4 h-4" />
+                      <span className="hidden sm:inline">Create Schedule</span>
+                      <span className="sm:hidden">Create</span>
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent className="sm:max-w-[500px]">
                   <DialogHeader>
                     <DialogTitle>Create New Schedule</DialogTitle>
@@ -333,6 +366,7 @@ export default function Schedule() {
                   </Form>
                 </DialogContent>
               </Dialog>
+              </div>
             )}
           </div>
         </div>
@@ -486,6 +520,13 @@ export default function Schedule() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Schedule Wizard */}
+        <ScheduleWizard
+          isOpen={isWizardOpen}
+          onClose={() => setIsWizardOpen(false)}
+          onSave={handleWizardSave}
+        />
       </div>
     </>
   );

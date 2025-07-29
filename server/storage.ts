@@ -79,6 +79,8 @@ export interface IStorage {
   // Schedule operations
   createSchedule(schedule: InsertSchedule): Promise<Schedule>;
   getSchedules(userId?: string): Promise<(Schedule & { user: User })[]>;
+  getAllSchedules(): Promise<(Schedule & { user: User })[]>;
+  getSchedulesByUserId(userId: string): Promise<(Schedule & { user: User })[]>;
   updateSchedule(id: string, updates: Partial<Schedule>): Promise<Schedule>;
   
   // Music request operations
@@ -399,8 +401,29 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(schedules.userId, users.id));
     
     const results = userId
-      ? await query.where(eq(schedules.userId, userId)).orderBy(schedules.shiftDate)
-      : await query.orderBy(schedules.shiftDate);
+      ? await query.where(eq(schedules.userId, userId)).orderBy(schedules.date)
+      : await query.orderBy(schedules.date);
+    
+    return results.map(row => ({ ...row.schedules, user: row.users! }));
+  }
+
+  async getAllSchedules(): Promise<(Schedule & { user: User })[]> {
+    const results = await db
+      .select()
+      .from(schedules)
+      .leftJoin(users, eq(schedules.userId, users.id))
+      .orderBy(schedules.date);
+    
+    return results.map(row => ({ ...row.schedules, user: row.users! }));
+  }
+
+  async getSchedulesByUserId(userId: string): Promise<(Schedule & { user: User })[]> {
+    const results = await db
+      .select()
+      .from(schedules)
+      .leftJoin(users, eq(schedules.userId, users.id))
+      .where(eq(schedules.userId, userId))
+      .orderBy(schedules.date);
     
     return results.map(row => ({ ...row.schedules, user: row.users! }));
   }
