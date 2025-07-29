@@ -1,47 +1,41 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { 
   UserPlus, 
-  Upload, 
   Check, 
   X, 
   Eye, 
-  FileText, 
+  Share2,
+  Copy,
+  ExternalLink,
+  Building2,
   Calendar,
   Phone,
   Mail,
   MapPin,
-  Clock,
-  Shield,
-  AlertCircle,
-  Users,
   UserCheck,
-  UserX
+  UserX,
+  Clock,
+  AlertCircle
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useClubSelection } from "@/hooks/useClubSelection";
-import { queryClient } from "@/lib/queryClient";
-import { insertDancerApplicationSchema } from "@shared/schema";
-import { z } from "zod";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import Header from "@/components/header";
 
-type DancerApplication = {
+interface DancerApplication {
   id: string;
   firstName: string;
   lastName: string;
@@ -70,487 +64,214 @@ type DancerApplication = {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+}
+
+const clubLabels = {
+  club_1: "Main Location - Downtown",
+  club_2: "Second Location - Uptown"
 };
 
-const applicationFormSchema = insertDancerApplicationSchema.extend({
-  dateOfBirth: z.string().optional(),
-});
+const statusLabels = {
+  pending: { label: "Pending Review", color: "bg-yellow-100 text-yellow-800" },
+  approved: { label: "Approved", color: "bg-green-100 text-green-800" },
+  rejected: { label: "Rejected", color: "bg-red-100 text-red-800" },
+  interview_scheduled: { label: "Interview Scheduled", color: "bg-blue-100 text-blue-800" },
+  background_check: { label: "Background Check", color: "bg-purple-100 text-purple-800" },
+  active: { label: "Active Dancer", color: "bg-emerald-100 text-emerald-800" },
+  inactive: { label: "Inactive", color: "bg-gray-100 text-gray-800" }
+};
 
 export default function DancerApplications() {
+  const { toast } = useToast();
   const { user } = useAuth();
   const { selectedClub } = useClubSelection();
-  const { toast } = useToast();
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [selectedTab, setSelectedTab] = useState("dancers");
+  const [selectedApplication, setSelectedApplication] = useState<DancerApplication | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
 
-  const canManage = user?.role && ['superuser', 'manager', 'house_mom', 'house_dad'].includes(user.role);
+  // Determine if user can see all clubs or just their assigned club
+  const isSuperuser = user?.role === 'superuser';
+  const userClub = isSuperuser ? undefined : user?.clubLocation;
 
-  const form = useForm<z.infer<typeof applicationFormSchema>>({
-    resolver: zodResolver(applicationFormSchema),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      phoneNumber: "",
-      address: "",
-      emergencyContact: "",
-      emergencyPhone: "",
-      stageName: "",
-      experience: "",
-      availability: "",
-      clubLocation: selectedClub,
-      idDocumentType: "drivers_license",
-    },
+  // Get dancer applications with club filtering
+  const { data: applications = [], isLoading } = useQuery({
+    queryKey: ['/api/dancer-applications', userClub],
+    queryFn: async () => {
+      const params = userClub ? `?clubLocation=${userClub}` : '';
+      return await apiRequest(`/api/dancer-applications${params}`);
+    }
   });
 
-  // Fetch applications
-  const { data: applications = [], refetch: refetchApplications } = useQuery({
-    queryKey: ['/api/dancer-applications', selectedClub],
-    enabled: canManage,
+  // Get active dancers
+  const { data: activeDancers = [] } = useQuery({
+    queryKey: ['/api/dancers/active', userClub],
+    queryFn: async () => {
+      const params = userClub ? `?clubLocation=${userClub}` : '';
+      return await apiRequest(`/api/dancers/active${params}`);
+    }
   });
 
-  // Fetch active dancers
-  const { data: activeDancers = [], refetch: refetchActive } = useQuery({
-    queryKey: ['/api/dancers/active', selectedClub],
-    enabled: canManage,
+  // Get inactive dancers
+  const { data: inactiveDancers = [] } = useQuery({
+    queryKey: ['/api/dancers/inactive', userClub],
+    queryFn: async () => {
+      const params = userClub ? `?clubLocation=${userClub}` : '';
+      return await apiRequest(`/api/dancers/inactive${params}`);
+    }
   });
 
-  // Fetch inactive dancers  
-  const { data: inactiveDancers = [], refetch: refetchInactive } = useQuery({
-    queryKey: ['/api/dancers/inactive', selectedClub],
-    enabled: canManage,
-  });
-
-  // Create application mutation
-  const createApplication = useMutation({
-    mutationFn: async (data: z.infer<typeof applicationFormSchema>) => {
-      let idDocumentUrl = "";
-      
-      // Handle file upload
-      if (selectedFile) {
-        setUploading(true);
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        
-        const uploadResponse = await fetch('/api/upload-document', {
-          method: 'POST',
-          body: formData,
-          credentials: 'include',
-        });
-        
-        if (uploadResponse.ok) {
-          const { url } = await uploadResponse.json();
-          idDocumentUrl = url;
-        }
-        setUploading(false);
-      }
-
-      const applicationData = {
-        ...data,
-        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
-        idDocumentUrl,
-        clubLocation: selectedClub,
-      };
-
-      const response = await fetch('/api/dancer-applications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(applicationData),
-      });
-
-      if (!response.ok) throw new Error('Failed to submit application');
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Application submitted successfully!" });
-      form.reset();
-      setSelectedFile(null);
-      refetchApplications();
-    },
-    onError: (error) => {
-      toast({ title: "Error submitting application", description: error.message, variant: "destructive" });
-    },
-  });
-
-  // Approve application mutation
+  // Approve application
   const approveApplication = useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/dancer-applications/${id}/approve`, {
-        method: 'PUT',
-        credentials: 'include',
+      return await apiRequest(`/api/dancer-applications/${id}/approve`, {
+        method: 'PUT'
       });
-      if (!response.ok) throw new Error('Failed to approve application');
-      return response.json();
     },
     onSuccess: () => {
-      toast({ title: "Application approved successfully!" });
-      refetchApplications();
-      refetchActive();
+      queryClient.invalidateQueries({ queryKey: ['/api/dancer-applications'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dancers/active'] });
+      toast({
+        title: "Application Approved",
+        description: "The dancer application has been approved successfully."
+      });
     },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to approve application",
+        variant: "destructive"
+      });
+    }
   });
 
-  // Reject application mutation
+  // Reject application
   const rejectApplication = useMutation({
     mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
-      const response = await fetch(`/api/dancer-applications/${id}/reject`, {
+      return await apiRequest(`/api/dancer-applications/${id}/reject`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ reason })
       });
-      if (!response.ok) throw new Error('Failed to reject application');
-      return response.json();
     },
     onSuccess: () => {
-      toast({ title: "Application rejected" });
-      refetchApplications();
+      queryClient.invalidateQueries({ queryKey: ['/api/dancer-applications'] });
+      toast({
+        title: "Application Rejected",
+        description: "The dancer application has been rejected."
+      });
+      setSelectedApplication(null);
+      setRejectionReason("");
     },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reject application",
+        variant: "destructive"
+      });
+    }
   });
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Check file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        toast({ title: "File too large", description: "Please select a file smaller than 10MB", variant: "destructive" });
-        return;
-      }
-      
-      // Check file type
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
-      if (!allowedTypes.includes(file.type)) {
-        toast({ title: "Invalid file type", description: "Please select a JPG, PNG, GIF, or PDF file", variant: "destructive" });
-        return;
-      }
-      
-      setSelectedFile(file);
+  // Toggle dancer status
+  const toggleDancerStatus = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest(`/api/dancers/${id}/toggle-status`, {
+        method: 'PUT'
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/dancers/active'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dancers/inactive'] });
+      toast({
+        title: "Status Updated",
+        description: "Dancer status has been updated successfully."
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update dancer status",
+        variant: "destructive"
+      });
     }
+  });
+
+  const copyApplicationLink = () => {
+    const applicationUrl = `${window.location.origin}/apply`;
+    navigator.clipboard.writeText(applicationUrl);
+    toast({
+      title: "Link Copied!",
+      description: "The application link has been copied to your clipboard."
+    });
   };
 
-  const onSubmit = (data: z.infer<typeof applicationFormSchema>) => {
-    createApplication.mutate(data);
+  const openApplicationLink = () => {
+    window.open('/apply', '_blank');
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      pending: "outline",
-      under_review: "secondary", 
-      approved: "default",
-      rejected: "destructive",
-      interview_scheduled: "secondary",
-      background_check: "secondary",
-      training: "secondary"
-    };
-    return <Badge variant={variants[status] || "outline"}>{status.replace('_', ' ')}</Badge>;
+  const getDancerDisplayName = (dancer: DancerApplication) => {
+    if (dancer.stageName) {
+      return `${dancer.firstName} "${dancer.stageName}" ${dancer.lastName}`;
+    }
+    return `${dancer.firstName} ${dancer.lastName}`;
   };
 
-  if (!canManage) {
+  const pendingApplications = applications.filter((app: DancerApplication) => 
+    ['pending', 'interview_scheduled', 'background_check'].includes(app.status)
+  );
+
+  if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Dancer Application</h1>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading dancer information...</p>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5" />
-              Apply to Become a Dancer
-            </CardTitle>
-            <CardDescription>
-              Submit your application to join our team at {selectedClub === 'club_1' ? 'Main Location' : 'Second Location'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="firstName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>First Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter your first name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="lastName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Last Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter your last name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="Enter your email" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="phoneNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone Number</FormLabel>
-                        <FormControl>
-                          <Input placeholder="(555) 123-4567" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Address</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter your address" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="dateOfBirth"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date of Birth</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="ssn"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Social Security Number</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="XXX-XX-XXXX" 
-                            maxLength={11}
-                            {...field} 
-                            onChange={(e) => {
-                              let value = e.target.value.replace(/\D/g, '');
-                              if (value.length >= 6) {
-                                value = `${value.slice(0, 3)}-${value.slice(3, 5)}-${value.slice(5, 9)}`;
-                              } else if (value.length >= 4) {
-                                value = `${value.slice(0, 3)}-${value.slice(3)}`;
-                              }
-                              field.onChange(value);
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="emergencyContact"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Emergency Contact</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Emergency contact name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="emergencyPhone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Emergency Phone</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Emergency contact phone" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="stageName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Stage Name (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter your preferred stage name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* ID Document Upload */}
-                <div className="space-y-4">
-                  <Label>ID Document Upload *</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="idDocumentType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Document Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select document type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="drivers_license">Driver's License</SelectItem>
-                              <SelectItem value="state_id">State ID</SelectItem>
-                              <SelectItem value="passport">Passport</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <div className="space-y-2">
-                      <Label>Upload Document</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="file"
-                          accept="image/*,.pdf"
-                          onChange={handleFileChange}
-                          className="flex-1"
-                        />
-                        <Upload className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      {selectedFile && (
-                        <p className="text-sm text-muted-foreground">
-                          Selected: {selectedFile.name}
-                        </p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        JPG, PNG, GIF, or PDF. Max 10MB.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="experience"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Previous Experience</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Describe any relevant experience in the entertainment industry..."
-                          className="min-h-[100px]"
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="availability"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Availability</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Describe your availability (days, times, etc.)..."
-                          className="min-h-[80px]"
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Alert>
-                  <Shield className="h-4 w-4" />
-                  <AlertDescription>
-                    All information provided will be kept confidential and used solely for employment purposes. 
-                    By submitting this application, you consent to a background check if your application is approved for further review.
-                  </AlertDescription>
-                </Alert>
-
-                <Button 
-                  type="submit" 
-                  disabled={createApplication.isPending || uploading}
-                  className="w-full"
-                >
-                  {createApplication.isPending || uploading ? "Submitting..." : "Submit Application"}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
       </div>
     );
   }
 
-  // Management interface for authorized roles
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Dancer Management</h1>
-      </div>
+    <div className="p-6">
+      <Header title="Dancer Management" />
+      
+      {/* Application Link Section */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Share2 className="h-5 w-5" />
+            Public Application Form
+          </CardTitle>
+          <CardDescription>
+            Share this link with potential dancers to apply online with AI assistance
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+            <div className="flex-1">
+              <div className="font-mono text-sm bg-white px-3 py-2 rounded border">
+                {window.location.origin}/apply
+              </div>
+            </div>
+            <Button onClick={copyApplicationLink} size="sm" variant="outline">
+              <Copy className="h-4 w-4 mr-2" />
+              Copy Link
+            </Button>
+            <Button onClick={openApplicationLink} size="sm">
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Open Form
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-      <Tabs defaultValue="applications" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="applications" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Applications ({applications.length})
-          </TabsTrigger>
-          <TabsTrigger value="active" className="flex items-center gap-2">
+      <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="dancers" className="flex items-center gap-2">
             <UserCheck className="h-4 w-4" />
             Active Dancers ({activeDancers.length})
+          </TabsTrigger>
+          <TabsTrigger value="applications" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Pending Applications ({pendingApplications.length})
           </TabsTrigger>
           <TabsTrigger value="inactive" className="flex items-center gap-2">
             <UserX className="h-4 w-4" />
@@ -558,200 +279,361 @@ export default function DancerApplications() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="applications" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pending Applications</CardTitle>
-              <CardDescription>
-                Review and manage dancer applications for {selectedClub === 'club_1' ? 'Main Location' : 'Second Location'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {applications.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No applications found</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {applications.map((app: DancerApplication) => (
-                    <Card key={app.id} className="border">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h3 className="font-semibold">{app.firstName} {app.lastName}</h3>
-                            <p className="text-sm text-muted-foreground">{app.stageName && `"${app.stageName}"`}</p>
-                          </div>
-                          {getStatusBadge(app.status)}
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                          <div className="flex items-center gap-2 text-sm">
-                            <Mail className="h-4 w-4" />
-                            {app.email}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm">
-                            <Phone className="h-4 w-4" />
-                            {app.phoneNumber}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm">
-                            <Calendar className="h-4 w-4" />
-                            Applied {format(new Date(app.createdAt), 'MMM d, yyyy')}
+        {/* Active Dancers Tab */}
+        <TabsContent value="dancers">
+          <div className="grid gap-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Active Dancers</h2>
+              <Badge variant="secondary">{activeDancers.length} dancers</Badge>
+            </div>
+            
+            {activeDancers.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <UserCheck className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No active dancers found.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {activeDancers.map((dancer: DancerApplication) => (
+                  <Card key={dancer.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="font-semibold text-lg">
+                            {getDancerDisplayName(dancer)}
+                          </h3>
+                          <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                            <Building2 className="h-4 w-4" />
+                            {clubLabels[dancer.clubLocation as keyof typeof clubLabels]}
                           </div>
                         </div>
-
-                        {app.experience && (
-                          <div className="mb-4">
-                            <Label className="text-sm font-medium">Experience:</Label>
-                            <p className="text-sm text-muted-foreground mt-1">{app.experience}</p>
+                        <Badge className={statusLabels[dancer.status as keyof typeof statusLabels]?.color || statusLabels.active.color}>
+                          {statusLabels[dancer.status as keyof typeof statusLabels]?.label || 'Active'}
+                        </Badge>
+                      </div>
+                      
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-gray-400" />
+                          {dancer.email}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-gray-400" />
+                          {dancer.phoneNumber}
+                        </div>
+                        {dancer.dateOfBirth && (
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-gray-400" />
+                            Joined {format(new Date(dancer.createdAt), 'MMM dd, yyyy')}
                           </div>
                         )}
+                      </div>
 
-                        {app.status === 'pending' && (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => approveApplication.mutate(app.id)}
-                              disabled={approveApplication.isPending}
-                              className="flex items-center gap-2"
-                            >
-                              <Check className="h-4 w-4" />
-                              Approve
+                      <div className="flex gap-2 mt-4">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="outline" className="flex-1">
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
                             </Button>
-                            
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button variant="outline" size="sm" className="flex items-center gap-2">
-                                  <X className="h-4 w-4" />
-                                  Reject
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Reject Application</DialogTitle>
-                                  <DialogDescription>
-                                    Please provide a reason for rejecting {app.firstName}'s application.
-                                  </DialogDescription>
-                                </DialogHeader>
-                                <form
-                                  onSubmit={(e) => {
-                                    e.preventDefault();
-                                    const formData = new FormData(e.currentTarget);
-                                    const reason = formData.get('reason') as string;
-                                    rejectApplication.mutate({ id: app.id, reason });
-                                  }}
-                                  className="space-y-4"
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle>{getDancerDisplayName(dancer)}</DialogTitle>
+                              <DialogDescription>
+                                Dancer details and information
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="text-sm font-medium">Email</label>
+                                  <p className="text-sm text-gray-600">{dancer.email}</p>
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium">Phone</label>
+                                  <p className="text-sm text-gray-600">{dancer.phoneNumber}</p>
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium">Club Location</label>
+                                  <p className="text-sm text-gray-600">
+                                    {clubLabels[dancer.clubLocation as keyof typeof clubLabels]}
+                                  </p>
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium">Status</label>
+                                  <Badge className={statusLabels[dancer.status as keyof typeof statusLabels]?.color || statusLabels.active.color}>
+                                    {statusLabels[dancer.status as keyof typeof statusLabels]?.label || 'Active'}
+                                  </Badge>
+                                </div>
+                              </div>
+                              
+                              {dancer.experience && (
+                                <div>
+                                  <label className="text-sm font-medium">Experience</label>
+                                  <p className="text-sm text-gray-600 mt-1">{dancer.experience}</p>
+                                </div>
+                              )}
+                              
+                              {dancer.availability && (
+                                <div>
+                                  <label className="text-sm font-medium">Availability</label>
+                                  <p className="text-sm text-gray-600 mt-1">{dancer.availability}</p>
+                                </div>
+                              )}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                        
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => toggleDancerStatus.mutate(dancer.id)}
+                          disabled={toggleDancerStatus.isPending}
+                        >
+                          <UserX className="h-4 w-4 mr-2" />
+                          Deactivate
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Pending Applications Tab */}
+        <TabsContent value="applications">
+          <div className="grid gap-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Pending Applications</h2>
+              <Badge variant="secondary">{pendingApplications.length} applications</Badge>
+            </div>
+            
+            {pendingApplications.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No pending applications.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {pendingApplications.map((application: DancerApplication) => (
+                  <Card key={application.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h3 className="font-semibold text-lg">
+                            {getDancerDisplayName(application)}
+                          </h3>
+                          <div className="flex items-center gap-4 text-sm text-gray-600 mt-2">
+                            <div className="flex items-center gap-1">
+                              <Mail className="h-4 w-4" />
+                              {application.email}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Phone className="h-4 w-4" />
+                              {application.phoneNumber}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Building2 className="h-4 w-4" />
+                              {clubLabels[application.clubLocation as keyof typeof clubLabels]}
+                            </div>
+                          </div>
+                        </div>
+                        <Badge className={statusLabels[application.status as keyof typeof statusLabels]?.color || statusLabels.pending.color}>
+                          {statusLabels[application.status as keyof typeof statusLabels]?.label || 'Pending'}
+                        </Badge>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="outline">
+                              <Eye className="h-4 w-4 mr-2" />
+                              Review Application
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle>{getDancerDisplayName(application)}</DialogTitle>
+                              <DialogDescription>
+                                Review application details and make a decision
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-6">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="text-sm font-medium">Full Name</label>
+                                  <p className="text-sm text-gray-600">{application.firstName} {application.lastName}</p>
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium">Stage Name</label>
+                                  <p className="text-sm text-gray-600">{application.stageName || 'Not provided'}</p>
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium">Email</label>
+                                  <p className="text-sm text-gray-600">{application.email}</p>
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium">Phone</label>
+                                  <p className="text-sm text-gray-600">{application.phoneNumber}</p>
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium">Club Location</label>
+                                  <p className="text-sm text-gray-600">
+                                    {clubLabels[application.clubLocation as keyof typeof clubLabels]}
+                                  </p>
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium">Application Date</label>
+                                  <p className="text-sm text-gray-600">
+                                    {format(new Date(application.createdAt), 'MMM dd, yyyy')}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {application.experience && (
+                                <div>
+                                  <label className="text-sm font-medium">Experience</label>
+                                  <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{application.experience}</p>
+                                </div>
+                              )}
+
+                              {application.availability && (
+                                <div>
+                                  <label className="text-sm font-medium">Availability</label>
+                                  <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{application.availability}</p>
+                                </div>
+                              )}
+
+                              <div className="flex gap-3 pt-4 border-t">
+                                <Button 
+                                  onClick={() => approveApplication.mutate(application.id)}
+                                  disabled={approveApplication.isPending}
+                                  className="flex-1"
                                 >
-                                  <Textarea 
-                                    name="reason"
-                                    placeholder="Enter rejection reason..."
-                                    required
-                                  />
-                                  <Button type="submit" disabled={rejectApplication.isPending}>
-                                    Reject Application
-                                  </Button>
-                                </form>
-                              </DialogContent>
-                            </Dialog>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                                  <Check className="h-4 w-4 mr-2" />
+                                  Approve Application
+                                </Button>
+                                
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button variant="destructive" className="flex-1">
+                                      <X className="h-4 w-4 mr-2" />
+                                      Reject Application
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>Reject Application</DialogTitle>
+                                      <DialogDescription>
+                                        Please provide a reason for rejecting this application.
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4">
+                                      <Textarea
+                                        placeholder="Enter rejection reason..."
+                                        value={rejectionReason}
+                                        onChange={(e) => setRejectionReason(e.target.value)}
+                                      />
+                                      <div className="flex gap-2">
+                                        <Button
+                                          variant="destructive"
+                                          onClick={() => rejectApplication.mutate({ 
+                                            id: application.id, 
+                                            reason: rejectionReason 
+                                          })}
+                                          disabled={!rejectionReason.trim() || rejectApplication.isPending}
+                                          className="flex-1"
+                                        >
+                                          Confirm Rejection
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
         </TabsContent>
 
-        <TabsContent value="active" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Active Dancers</CardTitle>
-              <CardDescription>
-                Currently active dancers at {selectedClub === 'club_1' ? 'Main Location' : 'Second Location'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {activeDancers.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No active dancers found</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {activeDancers.map((dancer: DancerApplication) => (
-                    <Card key={dancer.id} className="border">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-semibold">{dancer.firstName} {dancer.lastName}</h3>
-                          <Badge variant="default">Active</Badge>
-                        </div>
-                        {dancer.stageName && (
-                          <p className="text-sm text-muted-foreground mb-2">"{dancer.stageName}"</p>
-                        )}
-                        <div className="space-y-1 text-sm">
-                          <div className="flex items-center gap-2">
-                            <Mail className="h-3 w-3" />
-                            {dancer.email}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Phone className="h-3 w-3" />
-                            {dancer.phoneNumber}
+        {/* Inactive Dancers Tab */}
+        <TabsContent value="inactive">
+          <div className="grid gap-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Inactive Dancers</h2>
+              <Badge variant="secondary">{inactiveDancers.length} dancers</Badge>
+            </div>
+            
+            {inactiveDancers.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <UserX className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No inactive dancers.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {inactiveDancers.map((dancer: DancerApplication) => (
+                  <Card key={dancer.id} className="hover:shadow-md transition-shadow opacity-75">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="font-semibold text-lg">
+                            {getDancerDisplayName(dancer)}
+                          </h3>
+                          <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                            <Building2 className="h-4 w-4" />
+                            {clubLabels[dancer.clubLocation as keyof typeof clubLabels]}
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                        <Badge className="bg-gray-100 text-gray-800">
+                          Inactive
+                        </Badge>
+                      </div>
+                      
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-gray-400" />
+                          {dancer.email}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-gray-400" />
+                          {dancer.phoneNumber}
+                        </div>
+                      </div>
 
-        <TabsContent value="inactive" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Inactive Dancers</CardTitle>
-              <CardDescription>
-                Previously active dancers who are now inactive
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {inactiveDancers.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <UserX className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No inactive dancers found</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {inactiveDancers.map((dancer: DancerApplication) => (
-                    <Card key={dancer.id} className="border">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-semibold">{dancer.firstName} {dancer.lastName}</h3>
-                          <Badge variant="secondary">Inactive</Badge>
-                        </div>
-                        {dancer.stageName && (
-                          <p className="text-sm text-muted-foreground mb-2">"{dancer.stageName}"</p>
-                        )}
-                        <div className="space-y-1 text-sm">
-                          <div className="flex items-center gap-2">
-                            <Mail className="h-3 w-3" />
-                            {dancer.email}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Phone className="h-3 w-3" />
-                            {dancer.phoneNumber}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                      <div className="flex gap-2 mt-4">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => toggleDancerStatus.mutate(dancer.id)}
+                          disabled={toggleDancerStatus.isPending}
+                          className="flex-1"
+                        >
+                          <UserCheck className="h-4 w-4 mr-2" />
+                          Reactivate
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
     </div>

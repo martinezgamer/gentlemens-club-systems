@@ -726,6 +726,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get active dancers
+  app.get('/api/dancers/active', isAuthenticated, async (req: any, res) => {
+    try {
+      const { clubLocation } = req.query;
+      const dancers = await storage.getActiveDancers(clubLocation);
+      res.json(dancers);
+    } catch (error) {
+      console.error("Error fetching active dancers:", error);
+      res.status(500).json({ message: "Failed to fetch active dancers" });
+    }
+  });
+
+  // Get inactive dancers
+  app.get('/api/dancers/inactive', isAuthenticated, async (req: any, res) => {
+    try {
+      const { clubLocation } = req.query;
+      const dancers = await storage.getInactiveDancers(clubLocation);
+      res.json(dancers);
+    } catch (error) {
+      console.error("Error fetching inactive dancers:", error);
+      res.status(500).json({ message: "Failed to fetch inactive dancers" });
+    }
+  });
+
+  // Approve dancer application
+  app.put('/api/dancer-applications/:id/approve', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Check if user has permission to approve applications
+      const allowedRoles = ['superuser', 'manager', 'house_mom', 'house_dad'];
+      if (!user || !allowedRoles.includes(user.role as string)) {
+        return res.status(403).json({ message: "Access denied. Insufficient permissions." });
+      }
+
+      const result = await storage.updateDancerApplicationStatus(
+        id, 
+        'approved', 
+        userId, 
+        'Application approved'
+      );
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error approving dancer application:", error);
+      res.status(500).json({ message: "Failed to approve dancer application" });
+    }
+  });
+
+  // Reject dancer application
+  app.put('/api/dancer-applications/:id/reject', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Check if user has permission to reject applications
+      const allowedRoles = ['superuser', 'manager', 'house_mom', 'house_dad'];
+      if (!user || !allowedRoles.includes(user.role as string)) {
+        return res.status(403).json({ message: "Access denied. Insufficient permissions." });
+      }
+
+      const result = await storage.updateDancerApplicationStatus(
+        id, 
+        'rejected', 
+        userId, 
+        reason || 'Application rejected'
+      );
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error rejecting dancer application:", error);
+      res.status(500).json({ message: "Failed to reject dancer application" });
+    }
+  });
+
   app.put('/api/dancer-applications/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;

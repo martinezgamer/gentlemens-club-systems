@@ -111,6 +111,8 @@ export interface IStorage {
   getDancerApplications(clubLocation?: string): Promise<DancerApplication[]>;
   getDancerApplicationById(id: string): Promise<DancerApplication | undefined>;
   updateDancerApplicationStatus(id: string, status: string, reviewedBy: string, notes?: string): Promise<DancerApplication>;
+  getActiveDancers(clubLocation?: string): Promise<DancerApplication[]>;
+  getInactiveDancers(clubLocation?: string): Promise<DancerApplication[]>;
   approveDancerApplication(id: string, approvedBy: string): Promise<DancerApplication>;
   rejectDancerApplication(id: string, rejectedBy: string, reason: string): Promise<DancerApplication>;
   getActiveDancers(clubLocation?: string): Promise<DancerApplication[]>;
@@ -638,6 +640,21 @@ export class DatabaseStorage implements IStorage {
         .where(and(
           eq(dancerApplications.status, "approved"),
           eq(dancerApplications.isActive, true),
+          eq(dancerApplications.clubLocation, clubLocation as any)
+        ));
+    }
+    
+    return await query.orderBy(desc(dancerApplications.createdAt));
+  }
+
+  async getInactiveDancers(clubLocation?: string): Promise<DancerApplication[]> {
+    let query = db.select().from(dancerApplications)
+      .where(eq(dancerApplications.isActive, false));
+    
+    if (clubLocation) {
+      query = db.select().from(dancerApplications)
+        .where(and(
+          eq(dancerApplications.isActive, false),
           eq(dancerApplications.clubLocation, clubLocation as any)
         ));
     }
