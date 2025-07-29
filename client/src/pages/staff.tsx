@@ -71,6 +71,8 @@ export default function Staff() {
   const [editingStaff, setEditingStaff] = useState<User | null>(null);
   const [newStaffDialogOpen, setNewStaffDialogOpen] = useState(false);
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false);
 
   const isSuperuser = user?.role === 'superuser';
 
@@ -240,7 +242,7 @@ export default function Staff() {
               <span className="hidden sm:inline">Invite Staff</span>
               <span className="sm:hidden">Invite</span>
             </Button>
-            <Button variant="outline" className="flex items-center gap-2 text-sm">
+            <Button variant="outline" className="flex items-center gap-2 text-sm" onClick={() => setSearchDialogOpen(true)}>
               <Search className="w-4 h-4" />
               <span className="hidden sm:inline">Search</span>
             </Button>
@@ -603,6 +605,78 @@ export default function Staff() {
                 </Button>
               </form>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Search Dialog */}
+        <Dialog open={searchDialogOpen} onOpenChange={setSearchDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Search className="w-5 h-5" />
+                Search Staff Members
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Input
+                placeholder="Search by name, email, or role..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full"
+              />
+              {searchQuery && (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {staff
+                    .filter((member: User) => 
+                      member.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      member.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      member.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      member.role.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                    .slice(0, 10)
+                    .map((member: User) => (
+                      <div key={member.id} className="border rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                              {member.firstName[0]}{member.lastName[0]}
+                            </div>
+                            <div>
+                              <h4 className="font-medium">{member.firstName} {member.lastName}</h4>
+                              <p className="text-sm text-gray-600">{member.email}</p>
+                              <div className="flex gap-1 mt-1">
+                                <Badge variant="outline" className="text-xs">{getRoleDisplayName(member.role)}</Badge>
+                                <Badge className={`text-xs ${getClubBadgeColor(member.clubLocation)}`}>
+                                  {getClubDisplayName(member.clubLocation)}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            onClick={() => {
+                              setSelectedStaff(member);
+                              setSearchDialogOpen(false);
+                            }}
+                          >
+                            View
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  {staff.filter((member: User) => 
+                    member.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    member.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    member.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    member.role.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      No staff members found matching "{searchQuery}"
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </DialogContent>
         </Dialog>
       </div>

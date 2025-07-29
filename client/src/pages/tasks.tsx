@@ -859,7 +859,7 @@ export default function Tasks() {
                   <div>
                     <h4 className="font-medium text-green-600 dark:text-green-400 mb-2">📊 Staff Workload Analysis</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {Object.entries(aiAnalysis.workloadAnalysis).map(([userId, analysis]) => {
+                      {Object.entries(aiAnalysis.workloadAnalysis).map(([userId, analysis]: [string, any]) => {
                         const staffMember = staff.find((s: User) => s.id === userId);
                         if (!staffMember) return null;
                         
