@@ -167,13 +167,12 @@ export function AISmartNotifications({ className }: AISmartNotificationsProps) {
   }
 
   return (
-    <div className={`fixed top-4 right-4 z-50 space-y-2 max-w-sm ${className}`}>
-      {visibleNotifications.slice(0, 3).map((notification) => (
-        <div
-          key={notification.id}
-          className="animate-in slide-in-from-right-5 duration-300"
+    <div className={`space-y-3 ${className}`}>
+      {visibleNotifications.slice(0, 5).map((notification) => (
+        <Card 
+          key={notification.id} 
+          className={`${getPriorityColor(notification.priority)} border-l-4 shadow-sm hover:shadow-md transition-shadow`}
         >
-            <Card className={`${getPriorityColor(notification.priority)} border-2 shadow-lg`}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
@@ -218,14 +217,13 @@ export function AISmartNotifications({ className }: AISmartNotificationsProps) {
                   )}
                 </div>
               </CardContent>
-            </Card>
-          </div>
+        </Card>
         ))}
       
-      {visibleNotifications.length > 3 && (
-        <div className="text-center animate-in fade-in duration-500">
+      {visibleNotifications.length > 5 && (
+        <div className="text-center p-2">
           <Badge variant="secondary" className="text-xs">
-            +{visibleNotifications.length - 3} more insights
+            +{visibleNotifications.length - 5} more insights
           </Badge>
         </div>
       )}

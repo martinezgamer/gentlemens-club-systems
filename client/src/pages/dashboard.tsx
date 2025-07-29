@@ -45,7 +45,6 @@ export default function Dashboard() {
   return (
     <>
       <Header title="Dashboard" />
-      <AISmartNotifications />
       <div className="space-y-6 lg:space-y-8">
         {/* Welcome Section */}
         <div className="bg-gradient-to-r from-primary to-blue-600 rounded-2xl p-4 lg:p-6 text-white">
@@ -210,6 +209,25 @@ export default function Dashboard() {
             <AILiveMetrics />
           </div>
         </div>
+
+        {/* AI Smart Alerts & Notifications */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-purple-600" />
+              AI Smart Alerts
+              <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-xs">
+                Live
+              </Badge>
+            </CardTitle>
+            <CardDescription>
+              Real-time AI insights and actionable recommendations for your club
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AISmartNotifications />
+          </CardContent>
+        </Card>
 
         {/* Quick Actions */}
         <Card>
