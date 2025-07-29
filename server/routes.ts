@@ -1195,7 +1195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/dancers', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      if (!user || !user.id || !['superuser', 'owner', 'manager'].includes(user.role)) {
+      if (!user || !user.id || !user.role || !['superuser', 'owner', 'manager'].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
@@ -1247,7 +1247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/lineup', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      if (!user || !['superuser', 'owner', 'manager', 'house_mom', 'house_dad'].includes(user.role)) {
+      if (!user || !user.role || !['superuser', 'owner', 'manager', 'house_mom', 'house_dad'].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
@@ -1272,7 +1272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/lineup/:id/check-in', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      if (!user || !['superuser', 'owner', 'manager', 'house_mom', 'house_dad', 'host', 'front_door'].includes(user.role)) {
+      if (!user || !user.role || !['superuser', 'owner', 'manager', 'house_mom', 'house_dad', 'host', 'front_door'].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
@@ -1289,7 +1289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/lineup/:id/status', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      if (!user || !user.id || !['superuser', 'owner', 'manager', 'house_mom', 'house_dad', 'host', 'front_door'].includes(user.role)) {
+      if (!user || !user.id || !user.role || !['superuser', 'owner', 'manager', 'house_mom', 'house_dad', 'host', 'front_door'].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 

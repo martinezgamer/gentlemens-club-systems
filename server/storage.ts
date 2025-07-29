@@ -265,13 +265,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDancersByClub(clubLocation?: string): Promise<SelectDancer[]> {
-    const query = db.select().from(dancers);
-    
     if (clubLocation) {
-      return await query.where(and(sql`${dancers.clubLocation} = ${clubLocation}`, eq(dancers.isActive, true))).orderBy(dancers.stageName);
+      return await db.select().from(dancers)
+        .where(and(eq(dancers.clubLocation, clubLocation as any), eq(dancers.isActive, true)))
+        .orderBy(dancers.stageName);
     }
     
-    return await query.where(eq(dancers.isActive, true)).orderBy(dancers.stageName);
+    return await db.select().from(dancers)
+      .where(eq(dancers.isActive, true))
+      .orderBy(dancers.stageName);
   }
 
   async createDancer(dancer: InsertDancer): Promise<SelectDancer> {
@@ -306,7 +308,7 @@ export class DatabaseStorage implements IStorage {
         and(
           gte(dancerLineup.date, today),
           lte(dancerLineup.date, tomorrow),
-          clubLocation ? sql`${dancerLineup.clubLocation} = ${clubLocation}` : sql`true`
+          clubLocation ? eq(dancerLineup.clubLocation, clubLocation as any) : sql`true`
         )
       )
       .orderBy(dancerLineup.shiftType, dancerLineup.stageOrder);
@@ -329,7 +331,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(dancers, eq(dancerLineup.dancerId, dancers.id))
       .where(
         and(
-          sql`${dancerLineup.clubLocation} = ${clubLocation}`,
+          eq(dancerLineup.clubLocation, clubLocation as any),
           gte(dancerLineup.date, today),
           lte(dancerLineup.date, tomorrow),
           or(

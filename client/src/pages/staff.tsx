@@ -27,7 +27,8 @@ import {
   MapPin,
   Star,
   AlertTriangle,
-  TrendingUp
+  TrendingUp,
+  Search
 } from "lucide-react";
 
 interface User {
@@ -186,7 +187,7 @@ export default function Staff() {
   };
 
   const handleAddNote = (formData: FormData) => {
-    if (!selectedStaff) return;
+    if (!selectedStaff || !user?.id) return;
 
     const noteData = {
       staffId: selectedStaff.id,
@@ -194,6 +195,7 @@ export default function Staff() {
       title: formData.get('title') as string,
       content: formData.get('content') as string,
       isPrivate: formData.get('isPrivate') === 'on',
+      createdBy: user.id,
       clubLocation: selectedStaff.clubLocation || 'wiggles_gentlemens_club',
     };
 
@@ -259,7 +261,7 @@ export default function Staff() {
                       Top Performers
                     </h4>
                     <ul className="space-y-1">
-                      {aiInsights.topPerformers?.slice(0, 3).map((performer, idx) => (
+                      {aiInsights.topPerformers?.slice(0, 3).map((performer: string, idx: number) => (
                         <li key={idx} className="text-sm text-green-700 dark:text-green-300">• {performer}</li>
                       ))}
                     </ul>
@@ -270,7 +272,7 @@ export default function Staff() {
                       Key Recommendations
                     </h4>
                     <ul className="space-y-1">
-                      {aiInsights.recommendations?.slice(0, 3).map((rec, idx) => (
+                      {aiInsights.recommendations?.slice(0, 3).map((rec: string, idx: number) => (
                         <li key={idx} className="text-sm text-blue-700 dark:text-blue-300">• {rec}</li>
                       ))}
                     </ul>
@@ -307,7 +309,7 @@ export default function Staff() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Active Today</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{staff.filter(s => s.isActive).length}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{staff.filter((s: User) => s.isActive).length}</p>
                   <p className="text-xs text-green-600 dark:text-green-400">Currently working</p>
                 </div>
               </div>
@@ -322,7 +324,7 @@ export default function Staff() {
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Wiggles Staff</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {staff.filter(s => s.clubLocation === 'wiggles_gentlemens_club').length}
+                    {staff.filter((s: User) => s.clubLocation === 'wiggles_gentlemens_club').length}
                   </p>
                   <p className="text-xs text-purple-600 dark:text-purple-400">Club location</p>
                 </div>
@@ -338,7 +340,7 @@ export default function Staff() {
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Fantasy Staff</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {staff.filter(s => s.clubLocation === 'fantasy_gentlemens_club').length}
+                    {staff.filter((s: User) => s.clubLocation === 'fantasy_gentlemens_club').length}
                   </p>
                   <p className="text-xs text-pink-600 dark:text-pink-400">Club location</p>
                 </div>
@@ -365,7 +367,7 @@ export default function Staff() {
               </div>
             ) : (
               <div className="space-y-4">
-                {staff.map((member) => (
+                {staff.map((member: User) => (
                   <div key={member.id} className="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">

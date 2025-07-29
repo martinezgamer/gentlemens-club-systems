@@ -614,7 +614,6 @@ export type UpsertUser = typeof users.$inferInsert;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export type DancerApplication = typeof dancerApplications.$inferSelect;
-export type InsertDancerApplication = z.infer<typeof insertDancerApplicationSchema>;
 
 export type StaffNote = typeof staffNotes.$inferSelect;
 export type InsertStaffNote = z.infer<typeof insertStaffNoteSchema>;
@@ -651,8 +650,4 @@ export type InsertRegistrationToken = z.infer<typeof insertRegistrationTokenSche
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 
-export type SelectDancer = typeof dancers.$inferSelect;
-export type InsertDancer = z.infer<typeof insertDancerSchema>;
 
-export type SelectDancerLineup = typeof dancerLineup.$inferSelect;
-export type InsertDancerLineup = z.infer<typeof insertDancerLineupSchema>;
