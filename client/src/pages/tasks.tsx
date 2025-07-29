@@ -645,12 +645,15 @@ export default function Tasks() {
 
         {/* Create Task Dialog */}
         <Dialog open={newTaskDialogOpen} onOpenChange={setNewTaskDialogOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl" aria-describedby="create-task-description">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Zap className="w-5 h-5" />
                 Create New Task with AI Enhancement
               </DialogTitle>
+              <p id="create-task-description" className="text-sm text-muted-foreground">
+                Create a new task with AI-powered enhancement suggestions for better planning and execution.
+              </p>
             </DialogHeader>
             
             <div className="space-y-4">
@@ -801,12 +804,15 @@ export default function Tasks() {
 
         {/* Edit Task Dialog */}
         <Dialog open={!!editingTask} onOpenChange={(open) => !open && setEditingTask(null)}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl" aria-describedby="edit-task-description">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Edit3 className="w-5 h-5" />
                 Edit Task
               </DialogTitle>
+              <p id="edit-task-description" className="text-sm text-muted-foreground">
+                Modify task details, reassign responsibilities, and update status or priority levels.
+              </p>
             </DialogHeader>
             
             {editingTask && (
@@ -963,12 +969,15 @@ export default function Tasks() {
 
         {/* AI Insights Dialog */}
         <Dialog open={aiInsightsOpen} onOpenChange={setAiInsightsOpen}>
-          <DialogContent className="max-w-4xl">
+          <DialogContent className="max-w-4xl" aria-describedby="ai-insights-description">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5" />
                 AI Task Insights & Workload Analysis
               </DialogTitle>
+              <p id="ai-insights-description" className="text-sm text-muted-foreground">
+                View intelligent analysis of task priorities, workload distribution, and optimization recommendations.
+              </p>
             </DialogHeader>
             
             {aiLoading ? (

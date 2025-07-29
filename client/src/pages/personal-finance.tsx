@@ -233,9 +233,12 @@ export default function PersonalFinance() {
                 Add Record
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent aria-describedby="add-record-description">
               <DialogHeader>
                 <DialogTitle>Add Financial Record</DialogTitle>
+                <p id="add-record-description" className="text-sm text-muted-foreground">
+                  Track your earnings and expenses with detailed categorization.
+                </p>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
@@ -425,7 +428,7 @@ export default function PersonalFinance() {
                 <CardTitle>Income Breakdown - {getPeriodLabel(selectedPeriod)}</CardTitle>
               </CardHeader>
               <CardContent>
-                {personalSummary && (
+                {personalSummary && personalSummary.breakdown && (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="bg-green-50 p-4 rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
@@ -433,7 +436,7 @@ export default function PersonalFinance() {
                         <span className="font-medium text-green-800">Tips</span>
                       </div>
                       <p className="text-2xl font-bold text-green-600">
-                        {formatCurrency(personalSummary.breakdown.tips)}
+                        {formatCurrency(personalSummary.breakdown.tips || 0)}
                       </p>
                     </div>
 
@@ -443,7 +446,7 @@ export default function PersonalFinance() {
                         <span className="font-medium text-blue-800">Paychecks</span>
                       </div>
                       <p className="text-2xl font-bold text-blue-600">
-                        {formatCurrency(personalSummary.breakdown.paychecks)}
+                        {formatCurrency(personalSummary.breakdown.paychecks || 0)}
                       </p>
                     </div>
 
@@ -453,7 +456,7 @@ export default function PersonalFinance() {
                         <span className="font-medium text-purple-800">Bonuses</span>
                       </div>
                       <p className="text-2xl font-bold text-purple-600">
-                        {formatCurrency(personalSummary.breakdown.bonus)}
+                        {formatCurrency(personalSummary.breakdown.bonus || 0)}
                       </p>
                     </div>
 
@@ -463,7 +466,7 @@ export default function PersonalFinance() {
                         <span className="font-medium text-orange-800">Overtime</span>
                       </div>
                       <p className="text-2xl font-bold text-orange-600">
-                        {formatCurrency(personalSummary.breakdown.overtime)}
+                        {formatCurrency(personalSummary.breakdown.overtime || 0)}
                       </p>
                     </div>
 
@@ -473,7 +476,7 @@ export default function PersonalFinance() {
                         <span className="font-medium text-red-800">Personal Expenses</span>
                       </div>
                       <p className="text-2xl font-bold text-red-600">
-                        {formatCurrency(personalSummary.breakdown.personalExpenses)}
+                        {formatCurrency(personalSummary.breakdown.personalExpenses || 0)}
                       </p>
                     </div>
 
@@ -483,7 +486,7 @@ export default function PersonalFinance() {
                         <span className="font-medium text-gray-800">Work Expenses</span>
                       </div>
                       <p className="text-2xl font-bold text-gray-600">
-                        {formatCurrency(personalSummary.breakdown.workExpenses)}
+                        {formatCurrency(personalSummary.breakdown.workExpenses || 0)}
                       </p>
                     </div>
                   </div>

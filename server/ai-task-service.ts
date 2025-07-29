@@ -116,9 +116,44 @@ export async function analyzeTaskWorkload(tasks: Task[], staff: User[]): Promise
         responseSchema: {
           type: "object",
           properties: {
-            prioritizedTasks: { type: "array" },
-            workloadAnalysis: { type: "object" },
-            urgentTasks: { type: "array" },
+            prioritizedTasks: { 
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  title: { type: "string" },
+                  priority: { type: "string" },
+                  assignedTo: { type: "string" },
+                  status: { type: "string" }
+                }
+              }
+            },
+            workloadAnalysis: { 
+              type: "object",
+              properties: {
+                userId: {
+                  type: "object",
+                  properties: {
+                    taskCount: { type: "number" },
+                    totalEstimatedTime: { type: "number" },
+                    urgentTasks: { type: "number" },
+                    workloadLevel: { type: "string" }
+                  }
+                }
+              }
+            },
+            urgentTasks: { 
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  title: { type: "string" },
+                  priority: { type: "string" }
+                }
+              }
+            },
             bottlenecks: { type: "array", items: { type: "string" } },
             optimizationSuggestions: { type: "array", items: { type: "string" } },
             deadlineAlerts: { type: "array", items: { type: "string" } }
