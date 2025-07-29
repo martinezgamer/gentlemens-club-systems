@@ -104,7 +104,11 @@ export async function analyzeFinancialData(financialRecords: any[]): Promise<{
             recommendations: { type: "array", items: { type: "string" } },
             categorizations: { 
               type: "object",
-              additionalProperties: { type: "string" }
+              properties: {
+                timeCategory: { type: "string" },
+                amountCategory: { type: "string" },
+                sourceCategory: { type: "string" }
+              }
             },
             forecastedRevenue: { type: "number" }
           }
@@ -158,9 +162,10 @@ export async function analyzeStaffPerformance(performanceData: any[]): Promise<{
             topPerformers: { type: "array", items: { type: "string" } },
             improvementAreas: { 
               type: "object",
-              additionalProperties: {
-                type: "array",
-                items: { type: "string" }
+              properties: {
+                scheduling: { type: "array", items: { type: "string" } },
+                communication: { type: "array", items: { type: "string" } },
+                performance: { type: "array", items: { type: "string" } }
               }
             },
             recommendations: { type: "array", items: { type: "string" } }
@@ -213,15 +218,20 @@ export async function analyzeCustomerData(customerData: any[]): Promise<{
             insights: { type: "array", items: { type: "string" } },
             preferences: { 
               type: "object",
-              additionalProperties: {
-                type: "array",
-                items: { type: "string" }
+              properties: {
+                music: { type: "array", items: { type: "string" } },
+                services: { type: "array", items: { type: "string" } },
+                timing: { type: "array", items: { type: "string" } }
               }
             },
             recommendations: { type: "array", items: { type: "string" } },
             loyaltyTiers: { 
               type: "object",
-              additionalProperties: { type: "string" }
+              properties: {
+                bronze: { type: "string" },
+                silver: { type: "string" },
+                gold: { type: "string" }
+              }
             }
           }
         }
@@ -379,7 +389,11 @@ export async function analyzeMessageSentiment(messages: any[]): Promise<{
           properties: {
             sentimentScores: { 
               type: "object",
-              additionalProperties: { type: "number" }
+              properties: {
+                overall: { type: "number" },
+                staff: { type: "number" },
+                management: { type: "number" }
+              }
             },
             insights: { type: "array", items: { type: "string" } },
             flaggedMessages: { type: "array", items: { type: "object" } },
@@ -440,7 +454,11 @@ export async function generateBusinessIntelligence(allData: {
             keyInsights: { type: "array", items: { type: "string" } },
             performanceMetrics: { 
               type: "object",
-              additionalProperties: { type: "number" }
+              properties: {
+                efficiency: { type: "number" },
+                productivity: { type: "number" },
+                satisfaction: { type: "number" }
+              }
             },
             recommendations: { type: "array", items: { type: "string" } },
             alerts: { type: "array", items: { type: "string" } },
@@ -602,7 +620,13 @@ export async function getLiveInsights(): Promise<{
             recommendations: { type: "array", items: { type: "string" } },
             metrics: { 
               type: "object",
-              additionalProperties: { type: "number" }
+              properties: {
+                operational_efficiency: { type: "number" },
+                staff_performance: { type: "number" },
+                customer_satisfaction: { type: "number" },
+                revenue_optimization: { type: "number" },
+                ai_health: { type: "number" }
+              }
             }
           }
         }

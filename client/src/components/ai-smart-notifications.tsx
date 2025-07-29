@@ -17,6 +17,13 @@ interface SmartNotification {
   timestamp: Date;
 }
 
+interface LiveInsights {
+  alerts: string[];
+  opportunities: string[];
+  recommendations: string[];
+  metrics: { [key: string]: number };
+}
+
 interface AISmartNotificationsProps {
   className?: string;
 }
@@ -26,7 +33,7 @@ export function AISmartNotifications({ className }: AISmartNotificationsProps) {
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
   // Poll for new AI insights every 60 seconds
-  const { data: liveInsights } = useQuery({
+  const { data: liveInsights } = useQuery<LiveInsights>({
     queryKey: ['/api/ai/live-insights'],
     refetchInterval: 60 * 1000,
   });
@@ -140,7 +147,7 @@ export function AISmartNotifications({ className }: AISmartNotificationsProps) {
   };
 
   const dismissNotification = (id: string) => {
-    setDismissedIds(prev => new Set([...prev, id]));
+    setDismissedIds(prev => new Set(Array.from(prev).concat([id])));
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
