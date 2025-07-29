@@ -70,9 +70,14 @@ const roleLabels = {
   house_dad: "House Dad",
   dancer: "Dancer",
   dj: "DJ",
+  host: "Host",
+  floor_host: "Floor Host",
+  front_door: "Front Door",
   bartender: "Bartender",
   server: "Server",
-  barback: "Barback"
+  barback: "Barback",
+  security: "Security",
+  superuser: "Superuser"
 };
 
 export default function Messages() {
@@ -106,9 +111,10 @@ export default function Messages() {
   });
 
   // Fetch unread count
-  const { data: unreadCount = 0 } = useQuery<{ count: number }>({
+  const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ["/api/messages/unread-count"],
-  }).data?.count || 0;
+  });
+  const unreadCount = unreadData?.count || 0;
 
   // Create message mutation
   const createMessageMutation = useMutation({

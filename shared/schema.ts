@@ -35,6 +35,7 @@ export const staffRoleEnum = pgEnum("staff_role", [
   "house_dad",
   "dj",
   "host",
+  "floor_host",
   "front_door",
   "bartender",
   "server",

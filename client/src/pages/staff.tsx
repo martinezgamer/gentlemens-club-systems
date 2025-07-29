@@ -172,6 +172,9 @@ export default function Staff() {
       'house_mom': 'House Mom',
       'house_dad': 'House Dad',
       'dj': 'DJ',
+      'host': 'Host',
+      'floor_host': 'Floor Host',
+      'front_door': 'Front Door',
       'bartender': 'Bartender',
       'server': 'Server',
       'barback': 'Barback',
@@ -477,6 +480,9 @@ export default function Staff() {
                       <SelectItem value="house_mom">House Mom</SelectItem>
                       <SelectItem value="house_dad">House Dad</SelectItem>
                       <SelectItem value="dj">DJ</SelectItem>
+                      <SelectItem value="host">Host</SelectItem>
+                      <SelectItem value="floor_host">Floor Host</SelectItem>
+                      <SelectItem value="front_door">Front Door</SelectItem>
                       <SelectItem value="bartender">Bartender</SelectItem>
                       <SelectItem value="server">Server</SelectItem>
                       <SelectItem value="barback">Barback</SelectItem>

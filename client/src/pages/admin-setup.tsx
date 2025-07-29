@@ -10,12 +10,17 @@ import { useAuth } from "@/hooks/useAuth";
 const roles = [
   { value: 'owner', label: 'Owner' },
   { value: 'manager', label: 'Manager' },
-  { value: 'house_mom', label: 'House Mom/Dad' },
+  { value: 'house_mom', label: 'House Mom' },
+  { value: 'house_dad', label: 'House Dad' },
   { value: 'dancer', label: 'Dancer' },
   { value: 'dj', label: 'DJ' },
+  { value: 'host', label: 'Host' },
+  { value: 'floor_host', label: 'Floor Host' },
+  { value: 'front_door', label: 'Front Door' },
   { value: 'bartender', label: 'Bartender' },
   { value: 'server', label: 'Server' },
   { value: 'barback', label: 'Barback' },
+  { value: 'security', label: 'Security' },
 ];
 
 export default function AdminSetup() {
