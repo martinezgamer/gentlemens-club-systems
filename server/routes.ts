@@ -6,7 +6,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import * as aiService from "./ai-service";
 import { aiApplicationService } from "./ai-application-service";
 import superuserRoutes from "./routes/superuser";
-import { insertFinancialRecordSchema, insertTimeClockSchema, insertTaskSchema, insertMessageSchema, insertMusicRequestSchema, insertScheduleSchema, insertDancerApplicationSchema } from "@shared/schema";
+import { insertFinancialRecordSchema, insertTimeClockSchema, insertTaskSchema, insertMessageSchema, insertMusicRequestSchema, insertScheduleSchema, insertDancerApplicationSchema, insertDancerSchema, insertDancerLineupSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1168,6 +1168,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("AI application help error:", error);
       res.status(500).json({ message: "Failed to get AI suggestions" });
+    }
+  });
+
+  // Dancer management endpoints (independent contractors)
+  app.get('/api/dancers', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      let clubLocation: string | undefined;
+      
+      // Superusers see all, others see only their club
+      if (user.role !== 'superuser') {
+        clubLocation = user.clubLocation || undefined;
+      }
+
+      const dancers = await storage.getDancersByClub(clubLocation);
+      res.json(dancers);
+    } catch (error) {
+      console.error("Error fetching dancers:", error);
+      res.status(500).json({ message: "Failed to fetch dancers" });
+    }
+  });
+
+  app.post('/api/dancers', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || !['superuser', 'owner', 'manager'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const validatedData = insertDancerSchema.parse(req.body);
+      const dancer = await storage.createDancer(validatedData);
+      res.json(dancer);
+    } catch (error: any) {
+      console.error("Error creating dancer:", error);
+      res.status(400).json({ message: error.message || "Failed to create dancer" });
+    }
+  });
+
+  // Dancer Lineup endpoints
+  app.get('/api/lineup/today', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      let clubLocation: string | undefined;
+      
+      // Superusers see all, others see only their club
+      if (user.role !== 'superuser') {
+        clubLocation = user.clubLocation || undefined;
+      }
+
+      const lineup = await storage.getTodaysLineup(clubLocation);
+      res.json(lineup);
+    } catch (error) {
+      console.error("Error fetching today's lineup:", error);
+      res.status(500).json({ message: "Failed to fetch lineup" });
+    }
+  });
+
+  app.post('/api/lineup', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || !['superuser', 'owner', 'manager', 'house_mom', 'house_dad'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const validatedData = insertDancerLineupSchema.parse({
+        ...req.body,
+        scheduledBy: user.id
+      });
+      
+      const lineup = await storage.addToLineup(validatedData);
+      
+      res.json(lineup);
+    } catch (error: any) {
+      console.error("Error adding to lineup:", error);
+      res.status(400).json({ message: error.message || "Failed to add to lineup" });
+    }
+  });
+
+  app.put('/api/lineup/:id/check-in', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || !['superuser', 'owner', 'manager', 'house_mom', 'house_dad', 'host', 'front_door'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { id } = req.params;
+      const lineup = await storage.checkInDancer(id);
+      
+      res.json(lineup);
+    } catch (error: any) {
+      console.error("Error checking in dancer:", error);
+      res.status(400).json({ message: error.message || "Failed to check in dancer" });
+    }
+  });
+
+  app.put('/api/lineup/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || !['superuser', 'owner', 'manager', 'house_mom', 'house_dad', 'host', 'front_door'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const { id } = req.params;
+      const { status, currentStatus } = req.body;
+      const lineup = await storage.updateLineupStatus(id, status, currentStatus);
+      
+      res.json(lineup);
+    } catch (error: any) {
+      console.error("Error updating lineup status:", error);
+      res.status(400).json({ message: error.message || "Failed to update status" });
     }
   });
 

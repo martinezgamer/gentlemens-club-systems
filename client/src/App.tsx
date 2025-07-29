@@ -11,6 +11,7 @@ import Login from "./pages/login";
 import Dashboard from "./pages/dashboard";
 import SuperuserDashboard from "./pages/superuser-dashboard";
 import DancerApplications from "./pages/dancer-applications";
+import Lineup from "./pages/lineup";
 import TimeClock from "./pages/timeclock";
 import Financial from "./pages/financial";
 import Schedule from "./pages/schedule";
@@ -47,6 +48,7 @@ function Router() {
                 <Route path="/superuser" component={SuperuserDashboard} />
                 <Route path="/dashboard" component={Dashboard} />
                 <Route path="/dancers" component={DancerApplications} />
+                <Route path="/lineup" component={Lineup} />
                 <Route path="/timeclock" component={TimeClock} />
                 <Route path="/financial" component={Financial} />
                 <Route path="/schedule" component={Schedule} />
@@ -61,6 +63,7 @@ function Router() {
               <>
                 <Route path="/" component={Dashboard} />
                 <Route path="/dancers" component={DancerApplications} />
+                <Route path="/lineup" component={Lineup} />
                 <Route path="/timeclock" component={TimeClock} />
                 <Route path="/financial" component={Financial} />
                 <Route path="/schedule" component={Schedule} />

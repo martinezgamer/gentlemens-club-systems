@@ -9,6 +9,7 @@ import { useMobile } from "@/hooks/use-mobile";
 const navigation = [
   { name: "Dashboard", href: "/", icon: BarChart3 },
   { name: "Dancers", href: "/dancers", icon: Users },
+  { name: "Lineup", href: "/lineup", icon: Calendar },
   { name: "Schedule", href: "/schedule", icon: Calendar },
   { name: "Time Clock", href: "/timeclock", icon: Clock },
   { name: "Messages", href: "/messages", icon: MessageCircle },

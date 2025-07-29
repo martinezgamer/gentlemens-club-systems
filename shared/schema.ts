@@ -26,21 +26,23 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// Enums
-export const userRoleEnum = pgEnum("user_role", [
+// Staff roles enum (dancers are separate - they're independent contractors)
+export const staffRoleEnum = pgEnum("staff_role", [
   "superuser",
   "owner",
   "manager", 
   "house_mom",
   "house_dad",
-  "dancer",
   "dj",
-  "floor_host",
+  "host",
   "front_door",
   "bartender",
   "server",
   "barback"
 ]);
+
+// Keep userRoleEnum for backward compatibility but redirect to staffRoleEnum
+export const userRoleEnum = staffRoleEnum;
 
 export const clubLocationEnum = pgEnum("club_location", [
   "wiggles_gentlemens_club",
@@ -58,6 +60,8 @@ export const applicationStatusEnum = pgEnum("application_status", [
 ]);
 
 export const shiftTypeEnum = pgEnum("shift_type", ["day", "night"]);
+export const dancerStatusEnum = pgEnum("dancer_status", ["available", "working", "break", "vip", "unavailable"]);
+export const lineupStatusEnum = pgEnum("lineup_status", ["scheduled", "checked_in", "on_stage", "break", "checked_out"]);
 export const financialTypeEnum = pgEnum("financial_type", ["tips", "house_fee", "payout", "sale"]);
 export const taskStatusEnum = pgEnum("task_status", ["pending", "in_progress", "completed", "cancelled"]);
 export const taskPriorityEnum = pgEnum("task_priority", ["low", "medium", "high", "urgent"]);
@@ -67,6 +71,51 @@ export const inventoryStatusEnum = pgEnum("inventory_status", ["in_stock", "low_
 export const eventTypeEnum = pgEnum("event_type", ["birthday", "bachelor_party", "corporate", "special_show", "private_party"]);
 export const complianceStatusEnum = pgEnum("compliance_status", ["pending", "approved", "expired", "rejected"]);
 export const promotionTypeEnum = pgEnum("promotion_type", ["discount", "free_drink", "vip_upgrade", "special_rate"]);
+
+// Dancers - Independent Contractors (separate from staff)
+export const dancers = pgTable("dancers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => dancerApplications.id),
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
+  stageName: varchar("stage_name").notNull(),
+  email: varchar("email").notNull(),
+  phoneNumber: varchar("phone_number").notNull(),
+  clubLocation: clubLocationEnum("club_location").notNull(),
+  isActive: boolean("is_active").default(true),
+  profileImageUrl: varchar("profile_image_url"),
+  bio: text("bio"),
+  specialties: text("specialties"), // JSON array of specialties
+  hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }),
+  emergencyContact: varchar("emergency_contact"),
+  emergencyPhone: varchar("emergency_phone"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Daily Dancer Lineup for Fantasy Gentlemen's Club
+export const dancerLineup = pgTable("dancer_lineup", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  dancerId: varchar("dancer_id").references(() => dancers.id).notNull(),
+  clubLocation: clubLocationEnum("club_location").notNull(),
+  date: timestamp("date").notNull(), // Date for the lineup
+  shiftType: shiftTypeEnum("shift_type").notNull(), // day or night
+  // Fantasy Gentlemen's Club Hours:
+  // Day Shift: Wed/Thu/Fri 12pm-7pm
+  // Night Shift: 7pm-3am daily
+  shiftStart: timestamp("shift_start").notNull(),
+  shiftEnd: timestamp("shift_end").notNull(),
+  status: lineupStatusEnum("status").default("scheduled"),
+  checkInTime: timestamp("check_in_time"),
+  checkOutTime: timestamp("check_out_time"),
+  currentStatus: dancerStatusEnum("current_status").default("available"),
+  stageOrder: integer("stage_order"), // Order in the stage rotation
+  notes: text("notes"),
+  scheduledBy: varchar("scheduled_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
 
 // Dancer Applications
 export const dancerApplications = pgTable("dancer_applications", {
@@ -132,7 +181,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: userRoleEnum("role").default("dancer"),
+  role: userRoleEnum("role").default("server"),
   clubLocation: clubLocationEnum("club_location"),
   isActive: boolean("is_active").default(true),
   phoneNumber: varchar("phone_number"),
@@ -237,13 +286,14 @@ export const musicRequests = pgTable("music_requests", {
 // Activity logs for lap dances and VIP sessions
 export const activityLogs = pgTable("activity_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  dancerId: varchar("dancer_id").references(() => users.id).notNull(),
+  dancerId: varchar("dancer_id").references(() => dancers.id).notNull(), // Now references dancers table
+  lineupId: varchar("lineup_id").references(() => dancerLineup.id), // Reference to lineup entry
   type: varchar("type").notNull(), // 'lap_dance' or 'vip_session'
   count: integer("count"), // for lap dances
   duration: integer("duration"), // minutes for VIP sessions
   amount: decimal("amount", { precision: 10, scale: 2 }),
   shiftType: shiftTypeEnum("shift_type"),
-  timeClockEntryId: varchar("time_clock_entry_id").references(() => timeClockEntries.id),
+  clubLocation: clubLocationEnum("club_location").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -268,6 +318,39 @@ export const registrationTokens = pgTable("registration_tokens", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Insert and Select schemas for Dancers
+export const insertDancerSchema = createInsertSchema(dancers, {
+  email: z.string().email(),
+  phoneNumber: z.string().min(10),
+  stageName: z.string().min(1),
+  clubLocation: z.enum(["wiggles_gentlemens_club", "fantasy_gentlemens_club"]),
+}).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true 
+});
+
+export const selectDancerSchema = createInsertSchema(dancers);
+export type InsertDancer = z.infer<typeof insertDancerSchema>;
+export type SelectDancer = typeof dancers.$inferSelect;
+
+// Insert and Select schemas for Dancer Lineup
+export const insertDancerLineupSchema = createInsertSchema(dancerLineup, {
+  date: z.date(),
+  shiftStart: z.date(),
+  shiftEnd: z.date(),
+  shiftType: z.enum(["day", "night"]),
+  clubLocation: z.enum(["wiggles_gentlemens_club", "fantasy_gentlemens_club"]),
+}).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true 
+});
+
+export const selectDancerLineupSchema = createInsertSchema(dancerLineup);
+export type InsertDancerLineup = z.infer<typeof insertDancerLineupSchema>;
+export type SelectDancerLineup = typeof dancerLineup.$inferSelect;
+
 // Insert and Select schemas for DancerApplications
 export const insertDancerApplicationSchema = createInsertSchema(dancerApplications, {
   email: z.string().email(),
@@ -284,6 +367,8 @@ export const insertDancerApplicationSchema = createInsertSchema(dancerApplicatio
 });
 
 export const selectDancerApplicationSchema = createInsertSchema(dancerApplications);
+export type InsertDancerApplication = z.infer<typeof insertDancerApplicationSchema>;
+export type SelectDancerApplication = typeof dancerApplications.$inferSelect;
 
 
 
@@ -371,22 +456,53 @@ export const musicRequestRelations = relations(musicRequests, ({ one }) => ({
   }),
 }));
 
-export const activityLogRelations = relations(activityLogs, ({ one }) => ({
-  dancer: one(users, {
-    fields: [activityLogs.dancerId],
+// New relations for dancers and lineup
+export const dancerRelations = relations(dancers, ({ one, many }) => ({
+  application: one(dancerApplications, {
+    fields: [dancers.applicationId],
+    references: [dancerApplications.id],
+  }),
+  lineupEntries: many(dancerLineup),
+  activityLogs: many(activityLogs),
+}));
+
+export const dancerLineupRelations = relations(dancerLineup, ({ one, many }) => ({
+  dancer: one(dancers, {
+    fields: [dancerLineup.dancerId],
+    references: [dancers.id],
+  }),
+  scheduledBy: one(users, {
+    fields: [dancerLineup.scheduledBy],
     references: [users.id],
   }),
-  timeClockEntry: one(timeClockEntries, {
-    fields: [activityLogs.timeClockEntryId],
-    references: [timeClockEntries.id],
+  activityLogs: many(activityLogs),
+}));
+
+export const dancerApplicationRelations = relations(dancerApplications, ({ one }) => ({
+  reviewedBy: one(users, {
+    fields: [dancerApplications.reviewedBy],
+    references: [users.id],
+    relationName: "reviewer",
+  }),
+  approvedBy: one(users, {
+    fields: [dancerApplications.approvedBy],
+    references: [users.id],
+    relationName: "approver",
+  }),
+  dancer: one(dancers, {
+    fields: [dancerApplications.id],
+    references: [dancers.applicationId],
   }),
 }));
 
-// Dancer application relations
-export const dancerApplicationRelations = relations(dancerApplications, ({ one }) => ({
-  reviewer: one(users, {
-    fields: [dancerApplications.reviewedBy],
-    references: [users.id],
+export const activityLogRelations = relations(activityLogs, ({ one }) => ({
+  dancer: one(dancers, {
+    fields: [activityLogs.dancerId],
+    references: [dancers.id],
+  }),
+  lineup: one(dancerLineup, {
+    fields: [activityLogs.lineupId],
+    references: [dancerLineup.id],
   }),
 }));
 
@@ -534,3 +650,9 @@ export type InsertRegistrationToken = z.infer<typeof insertRegistrationTokenSche
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+export type SelectDancer = typeof dancers.$inferSelect;
+export type InsertDancer = z.infer<typeof insertDancerSchema>;
+
+export type SelectDancerLineup = typeof dancerLineup.$inferSelect;
+export type InsertDancerLineup = z.infer<typeof insertDancerLineupSchema>;

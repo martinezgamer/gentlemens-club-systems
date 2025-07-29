@@ -10,6 +10,8 @@ import {
   activityLogs,
   vipRooms,
   dancerApplications,
+  dancers,
+  dancerLineup,
   staffNotes,
   type User,
   type UpsertUser,
@@ -32,6 +34,10 @@ import {
   type VipRoom,
   type DancerApplication,
   type InsertDancerApplication,
+  type SelectDancer,
+  type InsertDancer,
+  type SelectDancerLineup,
+  type InsertDancerLineup,
   notifications,
   type Notification,
   type InsertNotification,
@@ -47,13 +53,29 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   upsertUser(user: UpsertUser): Promise<User>;
   
-  // Staff management
+  // Staff management (staff only - dancers are separate)
   getAllStaff(): Promise<User[]>;
   updateUserRole(id: string, role: string): Promise<User>;
   updateStaffDetails(id: string, updates: Partial<User>): Promise<User>;
   getStaffByClub(clubLocation?: string): Promise<User[]>;
   createStaffNote(note: { staffId: string; noteType: string; title: string; content: string; isPrivate?: boolean; createdBy: string; clubLocation: string; }): Promise<any>;
   getStaffNotes(staffId?: string): Promise<any[]>;
+  
+  // Dancer management (independent contractors)
+  getAllDancers(): Promise<SelectDancer[]>;
+  getDancersByClub(clubLocation?: string): Promise<SelectDancer[]>;
+  createDancer(dancer: InsertDancer): Promise<SelectDancer>;
+  updateDancer(id: string, updates: Partial<InsertDancer>): Promise<SelectDancer>;
+  getDancer(id: string): Promise<SelectDancer | undefined>;
+  
+  // Dancer Lineup management
+  getTodaysLineup(clubLocation?: string, date?: Date): Promise<(SelectDancerLineup & { dancer: SelectDancer })[]>;
+  getLineupByDate(date: Date, clubLocation?: string): Promise<(SelectDancerLineup & { dancer: SelectDancer })[]>;
+  addToLineup(lineup: InsertDancerLineup): Promise<SelectDancerLineup>;
+  updateLineupStatus(id: string, status: string, currentStatus?: string): Promise<SelectDancerLineup>;
+  removeFromLineup(id: string): Promise<void>;
+  checkInDancer(id: string): Promise<SelectDancerLineup>;
+  checkOutDancer(id: string): Promise<SelectDancerLineup>;
   
   // Registration tokens
   createRegistrationToken(token: InsertRegistrationToken): Promise<RegistrationToken>;
@@ -183,7 +205,7 @@ export class DatabaseStorage implements IStorage {
 
   // Staff management
   async getAllStaff(): Promise<User[]> {
-    return await db.select().from(users).where(ne(users.role, 'dancer'));
+    return await db.select().from(users).orderBy(users.firstName);
   }
 
   async updateUserRole(id: string, role: string): Promise<User> {
@@ -210,10 +232,8 @@ export class DatabaseStorage implements IStorage {
     }
     
     return await db.select().from(users)
-      .where(and(
-        ne(users.role, 'dancer'),
-        eq(users.clubLocation, clubLocation as any)
-      ));
+      .where(eq(users.clubLocation, clubLocation as any))
+      .orderBy(users.firstName);
   }
 
   async createStaffNote(note: { 
@@ -241,6 +261,138 @@ export class DatabaseStorage implements IStorage {
     }
     return await db.select().from(staffNotes)
       .orderBy(desc(staffNotes.createdAt));
+  }
+
+  // Dancer management (independent contractors)
+  async getAllDancers(): Promise<SelectDancer[]> {
+    return await db.select().from(dancers).orderBy(dancers.stageName);
+  }
+
+  async getDancersByClub(clubLocation?: string): Promise<SelectDancer[]> {
+    const query = db.select().from(dancers);
+    
+    if (clubLocation) {
+      return await query.where(and(eq(dancers.clubLocation, clubLocation), eq(dancers.isActive, true))).orderBy(dancers.stageName);
+    }
+    
+    return await query.where(eq(dancers.isActive, true)).orderBy(dancers.stageName);
+  }
+
+  async createDancer(dancer: InsertDancer): Promise<SelectDancer> {
+    const [newDancer] = await db.insert(dancers).values(dancer).returning();
+    return newDancer;
+  }
+
+  async updateDancer(id: string, updates: Partial<InsertDancer>): Promise<SelectDancer> {
+    const [updatedDancer] = await db.update(dancers)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(dancers.id, id))
+      .returning();
+    return updatedDancer;
+  }
+
+  async getDancer(id: string): Promise<SelectDancer | undefined> {
+    const result = await db.select().from(dancers).where(eq(dancers.id, id)).limit(1);
+    return result[0];
+  }
+
+  // Dancer Lineup management
+  async getTodaysLineup(clubLocation?: string, date?: Date): Promise<(SelectDancerLineup & { dancer: SelectDancer })[]> {
+    const today = date || new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const query = db.select()
+      .from(dancerLineup)
+      .leftJoin(dancers, eq(dancerLineup.dancerId, dancers.id))
+      .where(
+        and(
+          gte(dancerLineup.date, today),
+          lte(dancerLineup.date, tomorrow),
+          clubLocation ? eq(dancerLineup.clubLocation, clubLocation) : sql`true`
+        )
+      )
+      .orderBy(dancerLineup.shiftType, dancerLineup.stageOrder);
+
+    const results = await query;
+    return results.map(result => ({
+      ...result.dancer_lineup,
+      dancer: result.dancers!
+    }));
+  }
+
+  async getLineupByDate(date: Date, clubLocation?: string): Promise<(SelectDancerLineup & { dancer: SelectDancer })[]> {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const query = db.select()
+      .from(dancerLineup)
+      .leftJoin(dancers, eq(dancerLineup.dancerId, dancers.id))
+      .where(
+        and(
+          gte(dancerLineup.date, startOfDay),
+          lte(dancerLineup.date, endOfDay),
+          clubLocation ? eq(dancerLineup.clubLocation, clubLocation) : sql`true`
+        )
+      )
+      .orderBy(dancerLineup.shiftType, dancerLineup.stageOrder);
+
+    const results = await query;
+    return results.map(result => ({
+      ...result.dancer_lineup,
+      dancer: result.dancers!
+    }));
+  }
+
+  async addToLineup(lineup: InsertDancerLineup): Promise<SelectDancerLineup> {
+    const [newLineup] = await db.insert(dancerLineup).values(lineup).returning();
+    return newLineup;
+  }
+
+  async updateLineupStatus(id: string, status: string, currentStatus?: string): Promise<SelectDancerLineup> {
+    const updates: any = { status, updatedAt: new Date() };
+    if (currentStatus) {
+      updates.currentStatus = currentStatus;
+    }
+    
+    const [updated] = await db.update(dancerLineup)
+      .set(updates)
+      .where(eq(dancerLineup.id, id))
+      .returning();
+    return updated;
+  }
+
+  async removeFromLineup(id: string): Promise<void> {
+    await db.delete(dancerLineup).where(eq(dancerLineup.id, id));
+  }
+
+  async checkInDancer(id: string): Promise<SelectDancerLineup> {
+    const [updated] = await db.update(dancerLineup)
+      .set({ 
+        status: 'checked_in',
+        currentStatus: 'available',
+        checkInTime: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(dancerLineup.id, id))
+      .returning();
+    return updated;
+  }
+
+  async checkOutDancer(id: string): Promise<SelectDancerLineup> {
+    const [updated] = await db.update(dancerLineup)
+      .set({ 
+        status: 'checked_out',
+        currentStatus: 'unavailable',
+        checkOutTime: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(dancerLineup.id, id))
+      .returning();
+    return updated;
   }
 
   // Registration tokens

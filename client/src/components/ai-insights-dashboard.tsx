@@ -265,7 +265,7 @@ export function AIInsightsDashboard({ className }: AIInsightsProps) {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {staffPerformance?.topPerformers?.length > 0 && (
+                    {staffPerformance?.topPerformers && staffPerformance.topPerformers.length > 0 && (
                       <div>
                         <h4 className="font-medium text-green-700 mb-2">Top Performers</h4>
                         <div className="space-y-1">
@@ -301,7 +301,7 @@ export function AIInsightsDashboard({ className }: AIInsightsProps) {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {scheduleInsights?.conflicts?.length > 0 && (
+                    {scheduleInsights?.conflicts && scheduleInsights.conflicts.length > 0 && (
                       <div>
                         <h4 className="font-medium text-red-700 mb-2">Schedule Conflicts</h4>
                         <div className="space-y-2">
