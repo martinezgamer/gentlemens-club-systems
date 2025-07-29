@@ -9,12 +9,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { formatDuration } from "@/lib/utils";
 import Header from "@/components/header";
+import { useLocation } from "wouter";
 
 import CurrentDancersCard from "@/components/current-dancers-card";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { lastMessage } = useWebSocket();
+  const [, setLocation] = useLocation();
 
   const { data: metrics, refetch: refetchMetrics } = useQuery<{
     staffOnDuty: number;
@@ -206,6 +208,7 @@ export default function Dashboard() {
               <Button 
                 variant="outline" 
                 className="flex flex-col items-center p-3 lg:p-6 h-auto space-y-2 lg:space-y-3 border-dashed hover:border-primary hover:bg-primary/5"
+                onClick={() => setLocation('/tasks')}
               >
                 <div className="w-8 h-8 lg:w-12 lg:h-12 bg-primary/10 rounded-lg flex items-center justify-center">
                   <Plus className="text-primary text-sm lg:text-xl" />
@@ -216,6 +219,7 @@ export default function Dashboard() {
               <Button 
                 variant="outline" 
                 className="flex flex-col items-center p-3 lg:p-6 h-auto space-y-2 lg:space-y-3 border-dashed hover:border-success hover:bg-success/5"
+                onClick={() => setLocation('/staff')}
               >
                 <div className="w-8 h-8 lg:w-12 lg:h-12 bg-success/10 rounded-lg flex items-center justify-center">
                   <UserPlus className="text-success text-sm lg:text-xl" />
@@ -226,6 +230,7 @@ export default function Dashboard() {
               <Button 
                 variant="outline" 
                 className="flex flex-col items-center p-3 lg:p-6 h-auto space-y-2 lg:space-y-3 border-dashed hover:border-warning hover:bg-warning/5"
+                onClick={() => setLocation('/messages')}
               >
                 <div className="w-8 h-8 lg:w-12 lg:h-12 bg-warning/10 rounded-lg flex items-center justify-center">
                   <Megaphone className="text-warning text-sm lg:text-xl" />
@@ -236,6 +241,7 @@ export default function Dashboard() {
               <Button 
                 variant="outline" 
                 className="flex flex-col items-center p-3 lg:p-6 h-auto space-y-2 lg:space-y-3 border-dashed hover:border-blue-500 hover:bg-blue-50"
+                onClick={() => setLocation('/admin')}
               >
                 <div className="w-8 h-8 lg:w-12 lg:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                   <BarChart3 className="text-blue-600 text-sm lg:text-xl" />
