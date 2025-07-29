@@ -4,6 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import * as aiService from "./ai-service";
+import { aiApplicationService } from "./ai-application-service";
 import superuserRoutes from "./routes/superuser";
 import { insertFinancialRecordSchema, insertTimeClockSchema, insertTaskSchema, insertMessageSchema, insertMusicRequestSchema, insertScheduleSchema, insertDancerApplicationSchema } from "@shared/schema";
 import { z } from "zod";
@@ -819,7 +820,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // File upload endpoint for dancer applications
+  // AI Application Helper Routes
+  app.post('/api/ai/application-help', async (req: any, res) => {
+    try {
+      const { field, value, context } = req.body;
+      
+      let suggestion = '';
+      switch (field) {
+        case 'experience':
+          suggestion = await aiApplicationService.enhanceExperience(value, context);
+          break;
+        case 'availability':
+          suggestion = await aiApplicationService.improveAvailability(value);
+          break;
+        case 'stageName':
+          suggestion = await aiApplicationService.suggestStageName(context);
+          break;
+        default:
+          suggestion = value;
+      }
+      
+      res.json({ suggestion });
+    } catch (error) {
+      console.error("AI application help error:", error);
+      res.status(500).json({ message: "Failed to get AI suggestions" });
+    }
+  });
+
+  // Public Dancer Application Route (no auth required)
+  app.post('/api/dancer-applications/public', async (req: any, res) => {
+    try {
+      const application = insertDancerApplicationSchema.parse(req.body);
+      const result = await storage.createDancerApplication(application);
+      
+      // Optional: Get AI feedback on the application
+      try {
+        const feedback = await aiApplicationService.reviewApplication(application);
+        console.log(`Application submitted with AI score: ${feedback.score}/10`);
+      } catch (error) {
+        console.error("AI review error:", error);
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error creating public dancer application:", error);
+      res.status(400).json({ message: "Failed to create dancer application" });
+    }
+  });
+
+  // Public file upload endpoint (no auth required)
+  app.post('/api/upload', async (req: any, res) => {
+    try {
+      // For now, just return a mock URL since we don't have file storage configured
+      // In production, this would upload to a cloud storage service
+      res.json({ 
+        url: `/uploads/documents/${Date.now()}-document.pdf`,
+        message: "File upload functionality would be implemented with cloud storage in production"
+      });
+    } catch (error) {
+      console.error("Error uploading document:", error);
+      res.status(500).json({ message: "Failed to upload document" });
+    }
+  });
+
+  // File upload endpoint for dancer applications (authenticated)
   app.post('/api/upload-document', isAuthenticated, async (req: any, res) => {
     try {
       // For now, just return a mock URL since we don't have file storage configured

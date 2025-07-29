@@ -22,12 +22,16 @@ import Reports from "./pages/reports";
 import Admin from "./pages/admin";
 import AdminSetup from "./pages/admin-setup";
 import Layout from "./components/layout";
+import PublicDancerApplication from "./pages/public-dancer-application";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
   return (
     <Switch>
+      {/* Public routes - no authentication required */}
+      <Route path="/apply" component={PublicDancerApplication} />
+      
       {isLoading || !isAuthenticated ? (
         <>
           <Route path="/" component={Landing} />
