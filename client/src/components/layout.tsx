@@ -29,8 +29,10 @@ export default function Layout({ children }: LayoutProps) {
           isMobile 
             ? 'px-4 py-6' // Mobile padding
             : 'p-6 lg:p-8' // Desktop padding
-        } w-full max-w-none`}>
-          {children}
+        } w-full max-w-none relative`}>
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
         </main>
       </div>
     </div>

@@ -62,7 +62,7 @@ export default function Dashboard() {
   return (
     <>
       <Header title="Dashboard" />
-      <div className="space-y-6 lg:space-y-8">
+      <div className="space-y-6 lg:space-y-8 relative">
         {/* Welcome Section */}
         <div className="bg-gradient-to-r from-primary to-blue-600 rounded-2xl p-4 lg:p-6 text-white">
           <h2 className="text-xl lg:text-2xl font-bold mb-2">
@@ -217,13 +217,15 @@ export default function Dashboard() {
         </div>
 
         {/* AI Intelligence Center */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
+          <div className="xl:col-span-1">
             <AIInsightsDashboard />
           </div>
-          <div className="lg:col-span-1 space-y-4">
-            <AIChatAssistant />
+          <div className="xl:col-span-1">
             <AILiveMetrics />
+          </div>
+          <div className="xl:col-span-1">
+            <AIChatAssistant className="h-[400px]" />
           </div>
         </div>
 
