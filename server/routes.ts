@@ -680,8 +680,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/ai/customer-insights', isAuthenticated, async (req, res) => {
     try {
       const allUsers = await storage.getAllUsers();
-      // Filter for external customers or use empty array if no customer data exists
-      const customerData = allUsers.filter(user => user.role === 'dancer') || [];
+      // Use empty array as dancers are in separate table
+      const customerData: any[] = [];
       const insights = await aiService.analyzeCustomerData(customerData);
       res.json(insights);
     } catch (error) {
@@ -736,7 +736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getAllSchedules(),
         storage.getAllFinancialRecords(),
         storage.getAllUsers(),
-        storage.getAllUsers().then(users => users.filter(u => u.role === 'dancer')),
+        Promise.resolve([]), // Dancers are in separate table
         storage.getAllTasks()
       ]);
       
@@ -1195,7 +1195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/dancers', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      if (!user || !['superuser', 'owner', 'manager'].includes(user.role)) {
+      if (!user || !user.id || !['superuser', 'owner', 'manager'].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
@@ -1235,11 +1235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.user.claims.sub);
       if (!user) return res.status(401).json({ message: "User not found" });
 
-      // Check if user has access to this club
-      if (user.role !== 'superuser' && user.clubLocation !== clubLocation) {
-        return res.status(403).json({ message: "Access denied to this club location" });
-      }
-
+      // Allow access for all staff members to view both clubs
       const lineup = await storage.getCurrentDancersByClub(clubLocation);
       res.json(lineup);
     } catch (error) {
@@ -1253,6 +1249,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.user.claims.sub);
       if (!user || !['superuser', 'owner', 'manager', 'house_mom', 'house_dad'].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      if (!user.id) {
+        return res.status(401).json({ message: "User ID not found" });
       }
 
       const validatedData = insertDancerLineupSchema.parse({
@@ -1289,7 +1289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/lineup/:id/status', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
-      if (!user || !['superuser', 'owner', 'manager', 'house_mom', 'house_dad', 'host', 'front_door'].includes(user.role)) {
+      if (!user || !user.id || !['superuser', 'owner', 'manager', 'house_mom', 'house_dad', 'host', 'front_door'].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 

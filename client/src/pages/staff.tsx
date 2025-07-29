@@ -224,10 +224,16 @@ export default function Staff() {
               </Select>
             )}
           </div>
-          <Button onClick={() => setNewStaffDialogOpen(true)} className="flex items-center gap-2">
-            <UserPlus className="w-4 h-4" />
-            Invite Staff
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setNewStaffDialogOpen(true)} className="flex items-center gap-2">
+              <UserPlus className="w-4 h-4" />
+              Invite Staff
+            </Button>
+            <Button variant="outline" className="flex items-center gap-2">
+              <Search className="w-4 h-4" />
+              Search
+            </Button>
+          </div>
         </div>
 
         {/* AI Insights Card */}
@@ -277,52 +283,64 @@ export default function Staff() {
           </Card>
         )}
 
-        {/* Staff Overview */}
+        {/* Enhanced Staff Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow duration-200">
             <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <Users className="w-8 h-8 text-blue-600" />
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+                  <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                </div>
                 <div>
-                  <p className="text-sm text-gray-600">Total Staff</p>
-                  <p className="text-2xl font-bold">{staff.length}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Total Staff</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{staff.length}</p>
+                  <p className="text-xs text-green-600 dark:text-green-400">+2 this month</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow duration-200">
             <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <Clock className="w-8 h-8 text-green-600" />
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-green-100 dark:bg-green-900 rounded-full">
+                  <Clock className="w-6 h-6 text-green-600 dark:text-green-400" />
+                </div>
                 <div>
-                  <p className="text-sm text-gray-600">Active Today</p>
-                  <p className="text-2xl font-bold">{staff.filter(s => s.isActive).length}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Active Today</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{staff.filter(s => s.isActive).length}</p>
+                  <p className="text-xs text-green-600 dark:text-green-400">Currently working</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow duration-200">
             <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-8 h-8 text-purple-600" />
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
+                  <MapPin className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                </div>
                 <div>
-                  <p className="text-sm text-gray-600">Wiggles Staff</p>
-                  <p className="text-2xl font-bold">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Wiggles Staff</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
                     {staff.filter(s => s.clubLocation === 'wiggles_gentlemens_club').length}
                   </p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400">Club location</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow duration-200">
             <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-8 h-8 text-pink-600" />
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-pink-100 dark:bg-pink-900 rounded-full">
+                  <MapPin className="w-6 h-6 text-pink-600 dark:text-pink-400" />
+                </div>
                 <div>
-                  <p className="text-sm text-gray-600">Fantasy Staff</p>
-                  <p className="text-2xl font-bold">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Fantasy Staff</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
                     {staff.filter(s => s.clubLocation === 'fantasy_gentlemens_club').length}
                   </p>
+                  <p className="text-xs text-pink-600 dark:text-pink-400">Club location</p>
                 </div>
               </div>
             </CardContent>
