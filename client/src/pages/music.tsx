@@ -15,10 +15,11 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/header";
-import { Music, Play, Pause, SkipForward, Heart, Star, TrendingUp, Zap, Bot, ListMusic, Users, Clock, ThumbsUp, Fire, Plus } from "lucide-react";
+import { Music as MusicIcon, Play, Pause, SkipForward, Heart, Star, TrendingUp, Zap, Bot, ListMusic, Users, Clock, ThumbsUp, Flame, Plus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import type { MusicRequest, MusicAnalytics, Playlist, User } from "../../../shared/schema";
 
 const musicRequestSchema = z.object({
   trackTitle: z.string().min(1, "Track title is required"),
@@ -45,19 +46,19 @@ export default function Music() {
   const [showRequestDialog, setShowRequestDialog] = useState(false);
 
   // Fetch music requests
-  const { data: musicRequests = [], isLoading: requestsLoading } = useQuery({
+  const { data: musicRequests = [], isLoading: requestsLoading } = useQuery<(MusicRequest & { requester: User; dj?: User })[]>({
     queryKey: ['/api/music-requests', user?.role === 'dj' ? user.id : undefined],
     enabled: !!user,
   });
 
   // Fetch playlists
-  const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
+  const { data: playlists = [], isLoading: playlistsLoading } = useQuery<Playlist[]>({
     queryKey: ['/api/playlists', selectedClub],
     enabled: !!user,
   });
 
   // Fetch music analytics
-  const { data: analytics = [], isLoading: analyticsLoading } = useQuery({
+  const { data: analytics = [], isLoading: analyticsLoading } = useQuery<MusicAnalytics[]>({
     queryKey: ['/api/music/analytics', selectedClub],
     enabled: !!user,
   });
@@ -212,7 +213,7 @@ export default function Music() {
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Music className="h-5 w-5" />
+                <MusicIcon className="h-5 w-5" />
                 Music Dashboard
               </CardTitle>
             </CardHeader>
@@ -375,7 +376,7 @@ export default function Music() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Fire className="h-5 w-5 text-orange-500" />
+                  <Flame className="h-5 w-5 text-orange-500" />
                   Most Requested Songs by Dancers
                 </CardTitle>
               </CardHeader>
