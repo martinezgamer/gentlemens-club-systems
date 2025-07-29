@@ -35,6 +35,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, desc, count, sum, isNull, ne, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 // Interface for storage operations
 export interface IStorage {
@@ -334,11 +335,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMessagesByUserId(userId: string): Promise<(Message & { sender: User; receiver?: User })[]> {
+    const senderUser = alias(users, 'sender_user');
+    const receiverUser = alias(users, 'receiver_user');
+    
     const results = await db
-      .select()
+      .select({
+        message: messages,
+        sender: senderUser,
+        receiver: receiverUser
+      })
       .from(messages)
-      .leftJoin(users, eq(messages.senderId, users.id))
-      .leftJoin(users, eq(messages.receiverId, users.id))
+      .leftJoin(senderUser, eq(messages.senderId, senderUser.id))
+      .leftJoin(receiverUser, eq(messages.receiverId, receiverUser.id))
       .where(or(
         eq(messages.receiverId, userId),
         eq(messages.senderId, userId)
@@ -346,9 +354,9 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(messages.createdAt));
     
     return results.map(row => ({
-      ...row.messages,
-      sender: row.users!,
-      receiver: row.users || undefined
+      ...row.message,
+      sender: row.sender!,
+      receiver: row.receiver || undefined
     }));
   }
 
