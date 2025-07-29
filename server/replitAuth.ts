@@ -130,6 +130,17 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
+  // Check if user is authenticated (either through OIDC or custom login)
+  if (!user || !user.claims || !user.claims.sub) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  // Handle superuser with mock session (bypass OIDC checks)
+  if (user.claims.sub === 'superuser-maritnez' && user.access_token === 'mock-access-token') {
+    return next();
+  }
+
+  // Standard OIDC authentication flow
   if (!req.isAuthenticated() || !user.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
   }

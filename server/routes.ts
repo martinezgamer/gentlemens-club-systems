@@ -12,6 +12,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // Custom login endpoint for superuser with case-insensitive authentication  
+  app.post('/api/auth/login', async (req: any, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+      
+      // Normalize email to lowercase for case-insensitive comparison
+      const normalizedEmail = email.toLowerCase().trim();
+      
+      // Check for the superuser account (case-insensitive)
+      if (normalizedEmail === 'maritnezgamer@gmail.com' && password === 'Chicago@21') {
+        // Create mock session for superuser that mimics OIDC structure
+        const mockUser = {
+          claims: {
+            sub: 'superuser-maritnez',
+            email: 'maritnezgamer@gmail.com',
+            first_name: 'Superuser',
+            last_name: 'Admin',
+            exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 days from now
+          },
+          access_token: 'mock-access-token',
+          refresh_token: 'mock-refresh-token',
+          expires_at: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
+        };
+        
+        // Store user in session like passport would
+        req.user = mockUser;
+        req.session.passport = { user: mockUser };
+        
+        // Ensure user exists in database
+        await storage.upsertUser({
+          id: 'superuser-maritnez',
+          email: 'maritnezgamer@gmail.com',
+          firstName: 'Superuser',
+          lastName: 'Admin',
+          role: 'superuser',
+          clubLocation: 'club_1',
+          isActive: true,
+          profileCompleted: true,
+        });
+        
+        const user = await storage.getUser('superuser-maritnez');
+        res.json({ success: true, user });
+      } else {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
