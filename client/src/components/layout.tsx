@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import Sidebar from "./sidebar";
 import { useMobile } from "@/hooks/use-mobile";
+import NotificationSystem from "./notification-system";
 
 interface LayoutProps {
   children: ReactNode;
@@ -19,6 +20,11 @@ export default function Layout({ children }: LayoutProps) {
           ? 'pt-16' // Top padding for mobile header
           : 'ml-64' // Left margin for desktop sidebar
       } min-h-screen`}>
+        {/* Notification system positioned in top right */}
+        <div className="fixed top-4 right-4 z-50">
+          <NotificationSystem />
+        </div>
+        
         <main className={`${
           isMobile 
             ? 'px-4 py-6' // Mobile padding

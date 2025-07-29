@@ -467,6 +467,31 @@ export const insertClubLocationSchema = createInsertSchema(clubLocations).omit({
   createdAt: true,
 });
 
+// Notifications table
+export const notifications = pgTable("notifications", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => users.id),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  data: jsonb("data"),
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Notification relations
+export const notificationRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+}));
+
 // Types
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
@@ -506,3 +531,6 @@ export type VipRoom = typeof vipRooms.$inferSelect;
 
 export type RegistrationToken = typeof registrationTokens.$inferSelect;
 export type InsertRegistrationToken = z.infer<typeof insertRegistrationTokenSchema>;
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;

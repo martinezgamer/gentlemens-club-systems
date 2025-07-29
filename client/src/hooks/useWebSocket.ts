@@ -6,7 +6,7 @@ interface WebSocketMessage {
   message?: string;
 }
 
-export function useWebSocket() {
+export function useWebSocket(onMessage?: (message: WebSocketMessage) => void) {
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
   const ws = useRef<WebSocket | null>(null);
@@ -28,6 +28,9 @@ export function useWebSocket() {
         try {
           const message = JSON.parse(event.data);
           setLastMessage(message);
+          if (onMessage) {
+            onMessage(message);
+          }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
         }

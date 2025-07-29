@@ -769,6 +769,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId, 
         'Application approved'
       );
+
+      // Create notification for the applicant (if they have a user account)
+      try {
+        const application = await storage.getDancerApplicationById(id);
+        if (application) {
+          // Find user by email to send notification
+          const users = await storage.getAllUsers();
+          const applicantUser = users.find(u => u.email === application.email);
+          
+          if (applicantUser) {
+            await storage.createNotification({
+              userId: applicantUser.id,
+              type: 'application_approved',
+              title: 'Application Approved!',
+              message: `Your dancer application has been approved. Welcome to the team!`,
+              data: { applicationId: id, dancerName: `${application.firstName} ${application.lastName}` }
+            });
+          }
+
+          // Create notification for managers/house staff
+          const managementUsers = users.filter(u => 
+            ['superuser', 'manager', 'house_mom', 'house_dad'].includes(u.role as string)
+          );
+          
+          for (const manager of managementUsers) {
+            if (manager.id !== userId) { // Don't notify the person who approved it
+              await storage.createNotification({
+                userId: manager.id,
+                type: 'dancer_activated',
+                title: 'New Dancer Approved',
+                message: `${application.firstName} "${application.stageName || ''}" ${application.lastName} has been approved and is now active.`,
+                data: { applicationId: id, dancerName: `${application.firstName} ${application.lastName}` }
+              });
+            }
+          }
+
+          // Broadcast real-time notification
+          const broadcast = (global as any).broadcast;
+          if (broadcast) {
+            broadcast({
+              type: 'notification',
+              data: {
+                type: 'dancer_activated',
+                title: 'New Dancer Approved',
+                message: `${application.firstName} "${application.stageName || ''}" ${application.lastName} has been approved and is now active.`
+              }
+            });
+          }
+        }
+      } catch (notificationError) {
+        console.error("Error creating approval notifications:", notificationError);
+      }
       
       res.json(result);
     } catch (error) {
@@ -797,6 +849,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId, 
         reason || 'Application rejected'
       );
+
+      // Create notification for the applicant (if they have a user account)
+      try {
+        const application = await storage.getDancerApplicationById(id);
+        if (application) {
+          // Find user by email to send notification
+          const users = await storage.getAllUsers();
+          const applicantUser = users.find(u => u.email === application.email);
+          
+          if (applicantUser) {
+            await storage.createNotification({
+              userId: applicantUser.id,
+              type: 'application_rejected',
+              title: 'Application Update',
+              message: `Your dancer application has been reviewed. Please contact management for more details.`,
+              data: { applicationId: id, dancerName: `${application.firstName} ${application.lastName}`, reason }
+            });
+          }
+
+          // Create notification for managers/house staff
+          const managementUsers = users.filter(u => 
+            ['superuser', 'manager', 'house_mom', 'house_dad'].includes(u.role as string)
+          );
+          
+          for (const manager of managementUsers) {
+            if (manager.id !== userId) { // Don't notify the person who rejected it
+              await storage.createNotification({
+                userId: manager.id,
+                type: 'application_rejected',
+                title: 'Application Rejected',
+                message: `Application from ${application.firstName} ${application.lastName} has been rejected.`,
+                data: { applicationId: id, dancerName: `${application.firstName} ${application.lastName}`, reason }
+              });
+            }
+          }
+
+          // Broadcast real-time notification
+          const broadcast = (global as any).broadcast;
+          if (broadcast) {
+            broadcast({
+              type: 'notification',
+              data: {
+                type: 'application_rejected',
+                title: 'Application Rejected',
+                message: `Application from ${application.firstName} ${application.lastName} has been rejected.`
+              }
+            });
+          }
+        }
+      } catch (notificationError) {
+        console.error("Error creating rejection notifications:", notificationError);
+      }
       
       res.json(result);
     } catch (error) {
@@ -899,6 +1003,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Notification routes
+  app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const notifications = await storage.getNotificationsByUserId(userId);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.put('/api/notifications/:id/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const result = await storage.markNotificationAsRead(id);
+      res.json(result);
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  app.put('/api/notifications/mark-all-read', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.markAllNotificationsAsRead(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
   // AI Application Helper Routes
   app.post('/api/ai/application-help', async (req: any, res) => {
     try {
@@ -938,6 +1076,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`Application submitted with AI score: ${feedback.score}/10`);
       } catch (error) {
         console.error("AI review error:", error);
+      }
+
+      // Create notification for management about new application
+      try {
+        const users = await storage.getAllUsers();
+        const managementUsers = users.filter(u => 
+          ['superuser', 'manager', 'house_mom', 'house_dad'].includes(u.role as string)
+        );
+        
+        for (const manager of managementUsers) {
+          await storage.createNotification({
+            userId: manager.id,
+            type: 'new_application',
+            title: 'New Dancer Application',
+            message: `${application.firstName} ${application.lastName} has submitted a new application for ${application.clubLocation}.`,
+            data: { 
+              applicationId: result.id, 
+              dancerName: `${application.firstName} ${application.lastName}`,
+              clubLocation: application.clubLocation
+            }
+          });
+        }
+
+        // Broadcast real-time notification
+        const broadcast = (global as any).broadcast;
+        if (broadcast) {
+          broadcast({
+            type: 'notification',
+            data: {
+              type: 'new_application',
+              title: 'New Dancer Application',
+              message: `${application.firstName} ${application.lastName} has submitted a new application for ${application.clubLocation}.`
+            }
+          });
+        }
+      } catch (notificationError) {
+        console.error("Error creating new application notifications:", notificationError);
       }
       
       res.json(result);

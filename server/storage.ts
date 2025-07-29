@@ -32,6 +32,9 @@ import {
   type VipRoom,
   type DancerApplication,
   type InsertDancerApplication,
+  notifications,
+  type Notification,
+  type InsertNotification,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, desc, count, sum, isNull, ne, sql } from "drizzle-orm";
@@ -113,6 +116,12 @@ export interface IStorage {
   updateDancerApplicationStatus(id: string, status: string, reviewedBy: string, notes?: string): Promise<DancerApplication>;
   getActiveDancers(clubLocation?: string): Promise<DancerApplication[]>;
   getInactiveDancers(clubLocation?: string): Promise<DancerApplication[]>;
+
+  // Notification operations
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  getNotificationsByUserId(userId: string): Promise<Notification[]>;
+  markNotificationAsRead(notificationId: string): Promise<Notification>;
+  markAllNotificationsAsRead(userId: string): Promise<void>;
   approveDancerApplication(id: string, approvedBy: string): Promise<DancerApplication>;
   rejectDancerApplication(id: string, rejectedBy: string, reason: string): Promise<DancerApplication>;
   getActiveDancers(clubLocation?: string): Promise<DancerApplication[]>;
@@ -660,6 +669,39 @@ export class DatabaseStorage implements IStorage {
     }
     
     return await query.orderBy(desc(dancerApplications.createdAt));
+  }
+
+  // Notification operations
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [result] = await db.insert(notifications).values({
+      ...notification,
+      createdAt: new Date(),
+    }).returning();
+    return result;
+  }
+
+  async getNotificationsByUserId(userId: string): Promise<Notification[]> {
+    return await db.select().from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt))
+      .limit(50); // Limit to last 50 notifications
+  }
+
+  async markNotificationAsRead(notificationId: string): Promise<Notification> {
+    const [result] = await db.update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.id, notificationId))
+      .returning();
+    return result;
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    await db.update(notifications)
+      .set({ isRead: true })
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.isRead, false)
+      ));
   }
 
   async getInactiveDancers(clubLocation?: string): Promise<DancerApplication[]> {
