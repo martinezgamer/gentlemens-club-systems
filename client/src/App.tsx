@@ -16,6 +16,7 @@ import Tasks from "@/pages/tasks";
 import Staff from "@/pages/staff";
 import Reports from "@/pages/reports";
 import Admin from "@/pages/admin";
+import AdminSetup from "@/pages/admin-setup";
 import Layout from "@/components/layout";
 
 function Router() {
@@ -26,18 +27,21 @@ function Router() {
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
       ) : (
-        <Layout>
-          <Route path="/" component={Dashboard} />
-          <Route path="/timeclock" component={TimeClock} />
-          <Route path="/financial" component={Financial} />
-          <Route path="/schedule" component={Schedule} />
-          <Route path="/messages" component={Messages} />
-          <Route path="/music" component={Music} />
-          <Route path="/tasks" component={Tasks} />
-          <Route path="/staff" component={Staff} />
-          <Route path="/reports" component={Reports} />
-          <Route path="/admin" component={Admin} />
-        </Layout>
+        <>
+          <Route path="/admin-setup" component={AdminSetup} />
+          <Layout>
+            <Route path="/" component={Dashboard} />
+            <Route path="/timeclock" component={TimeClock} />
+            <Route path="/financial" component={Financial} />
+            <Route path="/schedule" component={Schedule} />
+            <Route path="/messages" component={Messages} />
+            <Route path="/music" component={Music} />
+            <Route path="/tasks" component={Tasks} />
+            <Route path="/staff" component={Staff} />
+            <Route path="/reports" component={Reports} />
+            <Route path="/admin" component={Admin} />
+          </Layout>
+        </>
       )}
       <Route component={NotFound} />
     </Switch>

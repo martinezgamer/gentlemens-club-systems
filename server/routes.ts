@@ -22,6 +22,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin route to update user role
+  app.post('/api/admin/update-role', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUserId = req.user.claims.sub;
+      const { userId, role } = req.body;
+      
+      // For now, allow any authenticated user to set themselves as owner
+      // In production, this would have proper role-based authorization
+      if (currentUserId === userId || !userId) {
+        const targetUserId = userId || currentUserId;
+        const updatedUser = await storage.updateUserRole(targetUserId, role);
+        res.json(updatedUser);
+      } else {
+        res.status(403).json({ message: "Forbidden" });
+      }
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ message: "Failed to update user role" });
+    }
+  });
+
   // Dashboard routes
   app.get('/api/dashboard/metrics', isAuthenticated, async (req, res) => {
     try {

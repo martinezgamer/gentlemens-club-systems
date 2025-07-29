@@ -121,6 +121,18 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async updateUserRole(userId: string, role: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ 
+        role: role as any,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
@@ -162,33 +174,35 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSchedulesByUserId(userId: string, from?: Date, to?: Date): Promise<Schedule[]> {
-    let query = db.select().from(schedules).where(eq(schedules.userId, userId));
+    const conditions = [eq(schedules.userId, userId)];
     
     if (from && to) {
-      query = query.where(and(
-        eq(schedules.userId, userId),
-        gte(schedules.date, from),
-        lte(schedules.date, to)
-      ));
+      conditions.push(gte(schedules.date, from));
+      conditions.push(lte(schedules.date, to));
     }
     
-    return await query.orderBy(desc(schedules.date));
+    return await db.select().from(schedules)
+      .where(and(...conditions))
+      .orderBy(desc(schedules.date));
   }
 
   async getAllSchedules(from?: Date, to?: Date): Promise<(Schedule & { user: User })[]> {
-    let query = db
+    const conditions = [];
+    
+    if (from && to) {
+      conditions.push(gte(schedules.date, from));
+      conditions.push(lte(schedules.date, to));
+    }
+    
+    const query = db
       .select()
       .from(schedules)
       .leftJoin(users, eq(schedules.userId, users.id));
     
-    if (from && to) {
-      query = query.where(and(
-        gte(schedules.date, from),
-        lte(schedules.date, to)
-      ));
-    }
+    const results = conditions.length > 0 
+      ? await query.where(and(...conditions)).orderBy(desc(schedules.date))
+      : await query.orderBy(desc(schedules.date));
     
-    const results = await query.orderBy(desc(schedules.date));
     return results.map(row => ({ ...row.schedules, user: row.users! }));
   }
 
@@ -228,21 +242,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTimeClockEntries(userId?: string, from?: Date, to?: Date): Promise<(TimeClockEntry & { user: User })[]> {
-    let query = db
-      .select()
-      .from(timeClockEntries)
-      .leftJoin(users, eq(timeClockEntries.userId, users.id));
-    
     const conditions = [];
     if (userId) conditions.push(eq(timeClockEntries.userId, userId));
     if (from) conditions.push(gte(timeClockEntries.clockInTime, from));
     if (to) conditions.push(lte(timeClockEntries.clockInTime, to));
     
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
+    const query = db
+      .select()
+      .from(timeClockEntries)
+      .leftJoin(users, eq(timeClockEntries.userId, users.id));
     
-    const results = await query.orderBy(desc(timeClockEntries.clockInTime));
+    const results = conditions.length > 0
+      ? await query.where(and(...conditions)).orderBy(desc(timeClockEntries.clockInTime))
+      : await query.orderBy(desc(timeClockEntries.clockInTime));
+    
     return results.map(row => ({ ...row.time_clock_entries, user: row.users! }));
   }
 
@@ -266,21 +279,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFinancialRecords(userId?: string, from?: Date, to?: Date): Promise<(FinancialRecord & { user: User })[]> {
-    let query = db
-      .select()
-      .from(financialRecords)
-      .leftJoin(users, eq(financialRecords.userId, users.id));
-    
     const conditions = [];
     if (userId) conditions.push(eq(financialRecords.userId, userId));
     if (from) conditions.push(gte(financialRecords.createdAt, from));
     if (to) conditions.push(lte(financialRecords.createdAt, to));
     
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
+    const query = db
+      .select()
+      .from(financialRecords)
+      .leftJoin(users, eq(financialRecords.userId, users.id));
     
-    const results = await query.orderBy(desc(financialRecords.createdAt));
+    const results = conditions.length > 0
+      ? await query.where(and(...conditions)).orderBy(desc(financialRecords.createdAt))
+      : await query.orderBy(desc(financialRecords.createdAt));
+    
     return results.map(row => ({ ...row.financial_records, user: row.users! }));
   }
 
@@ -376,21 +388,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTasks(assignedTo?: string, status?: string): Promise<(Task & { assignee?: User; creator: User })[]> {
-    let query = db
+    const conditions = [];
+    if (assignedTo) conditions.push(eq(tasks.assignedTo, assignedTo));
+    if (status) conditions.push(eq(tasks.status, status as any));
+    
+    const query = db
       .select()
       .from(tasks)
       .leftJoin(users, eq(tasks.assignedTo, users.id))
       .leftJoin(users, eq(tasks.assignedBy, users.id));
     
-    const conditions = [];
-    if (assignedTo) conditions.push(eq(tasks.assignedTo, assignedTo));
-    if (status) conditions.push(eq(tasks.status, status as any));
+    const results = conditions.length > 0
+      ? await query.where(and(...conditions)).orderBy(desc(tasks.createdAt))
+      : await query.orderBy(desc(tasks.createdAt));
     
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
-    
-    const results = await query.orderBy(desc(tasks.createdAt));
     return results.map(row => ({
       ...row.tasks,
       assignee: row.users || undefined,
@@ -418,21 +429,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMusicRequests(djId?: string, pending?: boolean): Promise<(MusicRequest & { requester: User; dj?: User })[]> {
-    let query = db
+    const conditions = [];
+    if (djId) conditions.push(eq(musicRequests.djId, djId));
+    if (pending) conditions.push(eq(musicRequests.isApproved, false));
+    
+    const query = db
       .select()
       .from(musicRequests)
       .leftJoin(users, eq(musicRequests.requesterId, users.id))
       .leftJoin(users, eq(musicRequests.djId, users.id));
     
-    const conditions = [];
-    if (djId) conditions.push(eq(musicRequests.djId, djId));
-    if (pending) conditions.push(eq(musicRequests.isApproved, false));
+    const results = conditions.length > 0
+      ? await query.where(and(...conditions)).orderBy(desc(musicRequests.createdAt))
+      : await query.orderBy(desc(musicRequests.createdAt));
     
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
-    
-    const results = await query.orderBy(desc(musicRequests.createdAt));
     return results.map(row => ({
       ...row.music_requests,
       requester: row.users!,
@@ -455,21 +465,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActivityLogs(dancerId?: string, from?: Date, to?: Date): Promise<(ActivityLog & { dancer: User })[]> {
-    let query = db
-      .select()
-      .from(activityLogs)
-      .leftJoin(users, eq(activityLogs.dancerId, users.id));
-    
     const conditions = [];
     if (dancerId) conditions.push(eq(activityLogs.dancerId, dancerId));
     if (from) conditions.push(gte(activityLogs.createdAt, from));
     if (to) conditions.push(lte(activityLogs.createdAt, to));
     
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
+    const query = db
+      .select()
+      .from(activityLogs)
+      .leftJoin(users, eq(activityLogs.dancerId, users.id));
     
-    const results = await query.orderBy(desc(activityLogs.createdAt));
+    const results = conditions.length > 0
+      ? await query.where(and(...conditions)).orderBy(desc(activityLogs.createdAt))
+      : await query.orderBy(desc(activityLogs.createdAt));
+    
     return results.map(row => ({ ...row.activity_logs, dancer: row.users! }));
   }
 

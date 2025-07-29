@@ -28,7 +28,7 @@ export default function Sidebar() {
     window.location.href = "/api/logout";
   };
 
-  const canAccessAdmin = user?.role === 'owner' || user?.role === 'manager';
+  const canAccessAdmin = (user as any)?.role === 'owner' || (user as any)?.role === 'manager';
 
   return (
     <div className="w-64 bg-white shadow-lg flex-shrink-0 flex flex-col">
@@ -40,7 +40,7 @@ export default function Sidebar() {
           </div>
           <div>
             <h3 className="font-semibold text-gray-900">FantasyCompanions</h3>
-            <p className="text-xs text-gray-500 capitalize">{user?.role || 'Employee'}</p>
+            <p className="text-xs text-gray-500 capitalize">{(user as any)?.role || 'Employee'}</p>
           </div>
         </div>
       </div>
@@ -90,17 +90,17 @@ export default function Sidebar() {
         <div className="flex items-center space-x-3">
           <Avatar className="w-10 h-10">
             <AvatarImage 
-              src={user?.profileImageUrl || undefined} 
+              src={(user as any)?.profileImageUrl || undefined} 
               alt="User profile"
               className="object-cover"
             />
             <AvatarFallback>
-              {user?.firstName?.[0]}{user?.lastName?.[0]}
+              {(user as any)?.firstName?.[0]}{(user as any)?.lastName?.[0]}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <p className="font-medium text-gray-900">
-              {user?.firstName} {user?.lastName}
+              {(user as any)?.firstName} {(user as any)?.lastName}
             </p>
             <p className="text-sm text-gray-500">Online</p>
           </div>
