@@ -362,8 +362,8 @@ export default function Music() {
           </Card>
         </div>
 
-        <Tabs defaultValue="popular" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+        <Tabs defaultValue="popular" className="w-full mt-6">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
             <TabsTrigger value="popular">What's Popular</TabsTrigger>
             <TabsTrigger value="trending">Trending Now</TabsTrigger>
             <TabsTrigger value="requests">Current Requests</TabsTrigger>

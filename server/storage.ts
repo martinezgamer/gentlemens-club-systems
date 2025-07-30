@@ -1107,11 +1107,14 @@ export class DatabaseStorage implements IStorage {
     const conditions = [];
     if (djId) conditions.push(eq(musicRequests.djId, djId));
     
+    const requesterUsers = alias(users, 'requester_users');
+    const djUsers = alias(users, 'dj_users');
+    
     const query = db
       .select()
       .from(musicRequests)
-      .leftJoin(users, eq(musicRequests.requesterId, users.id))
-      .leftJoin(users, eq(musicRequests.djId, users.id));
+      .leftJoin(requesterUsers, eq(musicRequests.requesterId, requesterUsers.id))
+      .leftJoin(djUsers, eq(musicRequests.djId, djUsers.id));
     
     const results = conditions.length > 0
       ? await query.where(and(...conditions)).orderBy(desc(musicRequests.createdAt))
@@ -1119,8 +1122,8 @@ export class DatabaseStorage implements IStorage {
     
     return results.map(row => ({
       ...row.music_requests,
-      requester: row.users!,
-      dj: row.users || undefined
+      requester: row.requester_users!,
+      dj: row.dj_users || undefined
     }));
   }
 
