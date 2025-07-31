@@ -2006,5 +2006,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Optimization Analysis Routes
+  app.post('/api/ai/analyze-codebase', isAuthenticated, async (req: any, res) => {
+    try {
+      const { analyzeCodebase, generateImplementationPlan } = await import('./ai-optimization-service');
+      
+      // Get user role to ensure only authorized users can perform analysis
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.role || !['superuser', 'owner', 'manager'].includes(user.role)) {
+        return res.status(403).json({ message: "Unauthorized: Analysis requires admin privileges" });
+      }
+
+      // Gather comprehensive codebase information
+      const fs = await import('fs');
+      const path = await import('path');
+
+      const schemaContent = fs.readFileSync(path.join(process.cwd(), 'shared/schema.ts'), 'utf8');
+      const routesContent = fs.readFileSync(path.join(process.cwd(), 'server/routes.ts'), 'utf8');
+      const dashboardContent = fs.readFileSync(path.join(process.cwd(), 'client/src/pages/dashboard.tsx'), 'utf8');
+      const packageContent = fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8');
+      const replitMdContent = fs.readFileSync(path.join(process.cwd(), 'replit.md'), 'utf8');
+
+      const codebaseInfo = {
+        schema: schemaContent.substring(0, 4000), // Limit for AI processing
+        routes: routesContent.substring(0, 3000),
+        frontend: dashboardContent.substring(0, 2000),
+        packageJson: packageContent,
+        projectDescription: replitMdContent.substring(0, 2000)
+      };
+
+      const analysis = await analyzeCodebase(codebaseInfo);
+      const implementationPlan = await generateImplementationPlan(analysis);
+
+      res.json({
+        analysis,
+        implementationPlan,
+        timestamp: new Date().toISOString(),
+        analyzedBy: user.email
+      });
+    } catch (error) {
+      console.error("Error analyzing codebase:", error);
+      res.status(500).json({ 
+        message: "Failed to analyze codebase", 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  });
+
   return httpServer;
 }
