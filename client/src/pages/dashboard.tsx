@@ -8,6 +8,9 @@ import { Users, DollarSign, Crown, Music, Plus, UserPlus, Megaphone, BarChart3 }
 import { useAuth } from "@/hooks/useAuth";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { formatDuration } from "@/lib/utils";
+import { QUERY_KEYS, getQueriesToInvalidate } from "@/lib/query-keys";
+import { queryClient } from "@/lib/queryClient";
+import { DashboardMetricsSkeleton, CurrentStaffSkeleton } from "@/components/ui/skeleton";
 import Header from "@/components/header";
 import { useLocation } from "wouter";
 
@@ -24,7 +27,7 @@ export default function Dashboard() {
     vipSessions: number;
     musicRequests: number;
   }>({
-    queryKey: ["/api/dashboard/metrics"],
+    queryKey: QUERY_KEYS.dashboard.metrics(),
   });
 
   const { data: currentStaff, refetch: refetchStaff } = useQuery<Array<{
@@ -40,14 +43,24 @@ export default function Dashboard() {
       role?: string;
     };
   }>>({
-    queryKey: ["/api/dashboard/current-staff"],
+    queryKey: QUERY_KEYS.dashboard.currentStaff(),
   });
 
-  // Refetch data on WebSocket updates
+  // Optimized WebSocket updates - invalidate only specific queries based on event type
   useEffect(() => {
-    if (lastMessage) {
-      refetchMetrics();
-      refetchStaff();
+    if (lastMessage?.event) {
+      const queriesToInvalidate = getQueriesToInvalidate(lastMessage.event);
+      
+      if (queriesToInvalidate.length > 0) {
+        // Invalidate specific queries based on event type
+        queriesToInvalidate.forEach(queryKey => {
+          queryClient.invalidateQueries({ queryKey });
+        });
+      } else {
+        // Legacy support - refetch all if no specific event type
+        refetchMetrics();
+        refetchStaff();
+      }
     }
   }, [lastMessage, refetchMetrics, refetchStaff]);
 
@@ -66,6 +79,9 @@ export default function Dashboard() {
         </div>
 
         {/* Metrics Cards */}
+        {!metrics ? (
+          <DashboardMetricsSkeleton />
+        ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
           <Card>
             <CardContent className="p-3 lg:p-6">
@@ -135,6 +151,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+        )}
 
         {/* Current Staff and Dancers Lineup */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">

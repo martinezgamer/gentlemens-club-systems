@@ -158,7 +158,7 @@ export default function Login() {
           </Button>
 
           <div className="text-center text-sm text-muted-foreground">
-            <p>Superuser Access: maritnezgamer@gmail.com</p>
+            <p>Admin access available via custom login</p>
             <p className="text-xs">Case-insensitive authentication enabled</p>
           </div>
         </CardContent>

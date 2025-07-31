@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 
 interface WebSocketMessage {
+  event: string;
   type: string;
   data?: any;
   message?: string;
+  payload?: any;
 }
 
 export function useWebSocket(onMessage?: (message: WebSocketMessage) => void) {

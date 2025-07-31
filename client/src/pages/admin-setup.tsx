@@ -33,12 +33,13 @@ export default function AdminSetup() {
     mutationFn: async ({ role }: { role: string }) => {
       const response = await fetch('/api/admin/update-role', {
         method: 'POST',
-        body: JSON.stringify({ role }),
+        body: JSON.stringify({ role, targetUserId: user?.id }),
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include'
       });
       if (!response.ok) {
-        throw new Error(await response.text());
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to update role');
       }
       return response.json();
     },

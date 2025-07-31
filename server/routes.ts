@@ -26,12 +26,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const normalizedEmail = email.toLowerCase().trim();
       
       // Check for the superuser account (case-insensitive)
-      if (normalizedEmail === 'maritnezgamer@gmail.com' && password === 'Chicago@21') {
+      if (normalizedEmail === process.env.SUPERUSER_EMAIL?.toLowerCase() && password === process.env.SUPERUSER_PASSWORD) {
         // Create mock session for superuser that mimics OIDC structure
         const mockUser = {
           claims: {
             sub: 'superuser-maritnez',
-            email: 'maritnezgamer@gmail.com',
+            email: process.env.SUPERUSER_EMAIL,
             first_name: 'Superuser',
             last_name: 'Admin',
             exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 days from now
@@ -48,7 +48,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Ensure user exists in database
         await storage.upsertUser({
           id: 'superuser-maritnez',
-          email: 'maritnezgamer@gmail.com',
+          email: process.env.SUPERUSER_EMAIL,
           firstName: 'Superuser',
           lastName: 'Admin',
           role: 'superuser',
@@ -80,24 +80,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin route to update user role
-  app.post('/api/admin/update-role', isAuthenticated, async (req: any, res) => {
-    try {
-      const currentUserId = req.user.claims.sub;
-      const { userId, role } = req.body;
-      
-      // For now, allow any authenticated user to set themselves as owner
-      // In production, this would have proper role-based authorization
-      if (currentUserId === userId || !userId) {
-        const targetUserId = userId || currentUserId;
-        const updatedUser = await storage.updateUserRole(targetUserId, role);
-        res.json(updatedUser);
-      } else {
-        res.status(403).json({ message: "Forbidden" });
+  // Validation middleware for role-based authorization
+  const requireRole = (allowedRoles: string[]) => {
+    return async (req: any, res: any, next: any) => {
+      try {
+        const userId = req.user.claims.sub;
+        const user = await storage.getUser(userId);
+        
+        if (!user || !user.role || !allowedRoles.includes(user.role)) {
+          return res.status(403).json({ 
+            message: "Unauthorized: Insufficient privileges for this operation" 
+          });
+        }
+        
+        req.currentUser = user;
+        next();
+      } catch (error) {
+        console.error("Role validation error:", error);
+        res.status(500).json({ message: "Authorization check failed" });
       }
+    };
+  };
+
+  // SECURE: Role update endpoint with proper RBAC
+  app.post('/api/admin/update-role', isAuthenticated, requireRole(['superuser']), async (req: any, res) => {
+    try {
+      const { role, targetUserId } = req.body;
+      const currentUser = req.currentUser;
+
+      // For development: Allow self-role changes, in production restrict further
+      const userId = req.user.claims.sub;
+      const finalTargetUserId = targetUserId || userId;
+
+      // Validate role exists
+      const validRoles = ['superuser', 'owner', 'manager', 'house_mom', 'house_dad', 
+                         'dj', 'host', 'floor_host', 'front_door', 'bartender', 'server', 'barback'];
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({ 
+          message: "Invalid role specified" 
+        });
+      }
+
+      const user = await storage.updateUserRole(finalTargetUserId, role);
+      
+      // Broadcast role change event
+      const broadcast = (global as any).broadcast;
+      if (broadcast) {
+        broadcast('STAFF_UPDATE', { userId: finalTargetUserId, newRole: role }, 'User role updated');
+      }
+      
+      res.json(user);
     } catch (error) {
       console.error("Error updating user role:", error);
-      res.status(500).json({ message: "Failed to update user role" });
+      res.status(500).json({ message: "Failed to update role" });
     }
   });
 
@@ -1873,8 +1908,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }));
   });
 
-  // Broadcast function for real-time updates
-  const broadcast = (data: any) => {
+  // Enhanced broadcast function for granular real-time updates
+  const broadcast = (event: string, data: any, message?: string) => {
+    const payload = {
+      event,
+      type: event, // Backward compatibility
+      data,
+      message,
+      timestamp: new Date().toISOString()
+    };
+    
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify(payload));
+      }
+    });
+  };
+
+  // Legacy broadcast function for backward compatibility
+  const legacyBroadcast = (data: any) => {
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(JSON.stringify(data));
@@ -1882,8 +1934,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   };
 
-  // Store broadcast function for use in other parts of the app
+  // Store broadcast functions for use in other parts of the app
   (global as any).broadcast = broadcast;
+  (global as any).legacyBroadcast = legacyBroadcast;
 
   // Comprehensive Analytics API Routes
   app.get("/api/analytics/customers", isAuthenticated, async (req: any, res) => {
