@@ -3,11 +3,11 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useAuth } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "./hooks/useAuth";
+import { ProtectedRoute } from "@/lib/protected-route";
 import { ClubSelectionProvider } from "@/hooks/useClubSelection";
 import NotFound from "./pages/not-found";
-import Landing from "./pages/landing";
-import Login from "./pages/login";
+import AuthPage from "./pages/auth-page";
 import Dashboard from "./pages/dashboard";
 import SuperuserDashboard from "./pages/superuser-dashboard";
 import DancerApplications from "./pages/dancer-applications";
@@ -28,63 +28,57 @@ import Layout from "./components/layout";
 import PublicDancerApplication from "./pages/public-dancer-application";
 
 function Router() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { user } = useAuth();
 
   return (
     <Switch>
       {/* Public routes - no authentication required */}
       <Route path="/apply" component={PublicDancerApplication} />
+      <Route path="/auth" component={AuthPage} />
       
-      {isLoading || !isAuthenticated ? (
-        <>
-          <Route path="/" component={Landing} />
-          <Route path="/login" component={Login} />
-        </>
-      ) : (
-        <>
-          <Route path="/admin-setup" component={AdminSetup} />
-          <Layout>
-            {user?.role === 'superuser' ? (
-              <>
-                <Route path="/" component={SuperuserDashboard} />
-                <Route path="/superuser" component={SuperuserDashboard} />
-                <Route path="/dashboard" component={Dashboard} />
-                <Route path="/dancers" component={DancerApplications} />
-                <Route path="/lineup" component={Lineup} />
-                <Route path="/timeclock" component={TimeClock} />
-                <Route path="/financial" component={Financial} />
-                <Route path="/personal-finance" component={PersonalFinance} />
-                <Route path="/schedule" component={Schedule} />
-                <Route path="/messages" component={Messages} />
-                <Route path="/music" component={Music} />
-                <Route path="/tasks" component={Tasks} />
-                <Route path="/staff" component={Staff} />
-                <Route path="/reports" component={Reports} />
-                <Route path="/admin" component={Admin} />
-                <Route path="/demo" component={Demo} />
-              </>
-            ) : (
-              <>
-                <Route path="/" component={Dashboard} />
-                <Route path="/dancers" component={DancerApplications} />
-                <Route path="/lineup" component={Lineup} />
-                <Route path="/timeclock" component={TimeClock} />
-                <Route path="/financial" component={Financial} />
-                <Route path="/personal-finance" component={PersonalFinance} />
-                <Route path="/schedule" component={Schedule} />
-                <Route path="/messages" component={Messages} />
-                <Route path="/music" component={Music} />
-                <Route path="/tasks" component={Tasks} />
-                <Route path="/staff" component={Staff} />
-                <Route path="/reports" component={Reports} />
-                <Route path="/admin" component={Admin} />
-                <Route path="/demo" component={Demo} />
-              </>
-            )}
-
-          </Layout>
-        </>
-      )}
+      {/* Protected routes */}
+      <ProtectedRoute path="/admin-setup" component={AdminSetup} />
+      
+      <Layout>
+        {user?.role === 'superuser' ? (
+          <>
+            <ProtectedRoute path="/" component={SuperuserDashboard} />
+            <ProtectedRoute path="/superuser" component={SuperuserDashboard} />
+            <ProtectedRoute path="/dashboard" component={Dashboard} />
+            <ProtectedRoute path="/dancers" component={DancerApplications} />
+            <ProtectedRoute path="/lineup" component={Lineup} />
+            <ProtectedRoute path="/timeclock" component={TimeClock} />
+            <ProtectedRoute path="/financial" component={Financial} />
+            <ProtectedRoute path="/personal-finance" component={PersonalFinance} />
+            <ProtectedRoute path="/schedule" component={Schedule} />
+            <ProtectedRoute path="/messages" component={Messages} />
+            <ProtectedRoute path="/music" component={Music} />
+            <ProtectedRoute path="/tasks" component={Tasks} />
+            <ProtectedRoute path="/staff" component={Staff} />
+            <ProtectedRoute path="/reports" component={Reports} />
+            <ProtectedRoute path="/admin" component={Admin} />
+            <ProtectedRoute path="/demo" component={Demo} />
+          </>
+        ) : (
+          <>
+            <ProtectedRoute path="/" component={Dashboard} />
+            <ProtectedRoute path="/dancers" component={DancerApplications} />
+            <ProtectedRoute path="/lineup" component={Lineup} />
+            <ProtectedRoute path="/timeclock" component={TimeClock} />
+            <ProtectedRoute path="/financial" component={Financial} />
+            <ProtectedRoute path="/personal-finance" component={PersonalFinance} />
+            <ProtectedRoute path="/schedule" component={Schedule} />
+            <ProtectedRoute path="/messages" component={Messages} />
+            <ProtectedRoute path="/music" component={Music} />
+            <ProtectedRoute path="/tasks" component={Tasks} />
+            <ProtectedRoute path="/staff" component={Staff} />
+            <ProtectedRoute path="/reports" component={Reports} />
+            <ProtectedRoute path="/admin" component={Admin} />
+            <ProtectedRoute path="/demo" component={Demo} />
+          </>
+        )}
+      </Layout>
+      
       <Route component={NotFound} />
     </Switch>
   );
@@ -93,12 +87,14 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ClubSelectionProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </ClubSelectionProvider>
+      <AuthProvider>
+        <ClubSelectionProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </ClubSelectionProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

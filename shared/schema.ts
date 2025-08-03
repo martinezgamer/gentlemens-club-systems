@@ -176,12 +176,13 @@ export const clubLocations = pgTable("club_locations", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// User storage table - mandatory for Replit Auth
+// User storage table - custom authentication system
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
+  email: varchar("email").unique().notNull(),
+  password: varchar("password").notNull(), // Hashed password for authentication
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
   profileImageUrl: varchar("profile_image_url"),
   role: userRoleEnum("role").default("server"),
   clubLocation: clubLocationEnum("club_location"),

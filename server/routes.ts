@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./auth";
 import * as aiService from "./ai-service";
 import { aiApplicationService } from "./ai-application-service";
 import superuserRoutes from "./routes/superuser";
@@ -13,7 +13,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Custom login endpoint for superuser with case-insensitive authentication  
+  // Legacy superuser endpoint for backward compatibility 
   app.post('/api/auth/login', async (req: any, res) => {
     try {
       const { email, password } = req.body;
@@ -22,43 +22,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email and password are required" });
       }
       
-      // Normalize email to lowercase for case-insensitive comparison
-      const normalizedEmail = email.toLowerCase().trim();
-      
       // Check for the superuser account (case-insensitive)
+      const normalizedEmail = email.toLowerCase().trim();
       if (normalizedEmail === process.env.SUPERUSER_EMAIL?.toLowerCase() && password === process.env.SUPERUSER_PASSWORD) {
-        // Create mock session for superuser that mimics OIDC structure
-        const mockUser = {
-          claims: {
-            sub: 'superuser-maritnez',
-            email: process.env.SUPERUSER_EMAIL,
-            first_name: 'Superuser',
-            last_name: 'Admin',
-            exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 days from now
-          },
-          access_token: 'mock-access-token',
-          refresh_token: 'mock-refresh-token',
-          expires_at: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
-        };
+        // Create superuser if doesn't exist
+        let user = await storage.getUserByEmail(normalizedEmail);
+        if (!user) {
+          user = await storage.createUser({
+            email: normalizedEmail,
+            password: 'legacy-superuser',
+            firstName: 'Superuser',
+            lastName: 'Admin',
+            role: 'superuser',
+            clubLocation: 'both_clubs',
+            isActive: true,
+            profileCompleted: true,
+            profileImageUrl: null,
+            phoneNumber: null,
+            address: null,
+            emergencyContact: null,
+            emergencyPhone: null,
+            registrationToken: null,
+            startDate: null,
+            notes: null,
+          });
+        }
         
-        // Store user in session like passport would
-        req.user = mockUser;
-        req.session.passport = { user: mockUser };
-        
-        // Ensure user exists in database
-        await storage.upsertUser({
-          id: 'superuser-maritnez',
-          email: process.env.SUPERUSER_EMAIL,
-          firstName: 'Superuser',
-          lastName: 'Admin',
-          role: 'superuser',
-          clubLocation: 'both_clubs',
-          isActive: true,
-          profileCompleted: true,
+        // Log in the user using passport
+        req.login(user, (err: any) => {
+          if (err) {
+            console.error("Login error:", err);
+            return res.status(500).json({ message: "Login failed" });
+          }
+          res.json({ success: true, user });
         });
-        
-        const user = await storage.getUser('superuser-maritnez');
-        res.json({ success: true, user });
       } else {
         return res.status(401).json({ message: "Invalid credentials" });
       }
@@ -68,12 +65,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Auth routes
+  // Update user endpoint for new auth system
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
+      res.json(req.user);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -84,8 +79,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const requireRole = (allowedRoles: string[]) => {
     return async (req: any, res: any, next: any) => {
       try {
-        const userId = req.user.claims.sub;
-        const user = await storage.getUser(userId);
+        const user = req.user;
         
         if (!user || !user.role || !allowedRoles.includes(user.role)) {
           return res.status(403).json({ 
@@ -109,7 +103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentUser = req.currentUser;
 
       // For development: Allow self-role changes, in production restrict further
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const finalTargetUserId = targetUserId || userId;
 
       // Validate role exists
