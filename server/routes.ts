@@ -151,6 +151,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dashboard widget routes
+  app.get('/api/dashboard/widgets', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const widgets = await storage.getDashboardWidgets(userId);
+      res.json(widgets);
+    } catch (error) {
+      console.error("Error fetching dashboard widgets:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard widgets" });
+    }
+  });
+
+  app.put('/api/dashboard/widgets', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { widgets } = req.body;
+      const updatedWidgets = await storage.updateDashboardWidgets(userId, widgets);
+      res.json(updatedWidgets);
+    } catch (error) {
+      console.error("Error updating dashboard widgets:", error);
+      res.status(500).json({ message: "Failed to update dashboard widgets" });
+    }
+  });
+
+  app.post('/api/dashboard/widgets/reset', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const defaultWidgets = await storage.resetDashboardWidgets(userId);
+      res.json(defaultWidgets);
+    } catch (error) {
+      console.error("Error resetting dashboard widgets:", error);
+      res.status(500).json({ message: "Failed to reset dashboard widgets" });
+    }
+  });
+
   // Time clock routes
   app.post('/api/timeclock/clock-in', isAuthenticated, async (req: any, res) => {
     try {

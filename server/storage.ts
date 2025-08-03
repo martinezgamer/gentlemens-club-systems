@@ -50,6 +50,9 @@ import {
   notifications,
   type Notification,
   type InsertNotification,
+  dashboardWidgets,
+  type DashboardWidget,
+  type InsertDashboardWidget,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, gte, lte, desc, count, sum, isNull, ne, sql, inArray } from "drizzle-orm";
@@ -232,6 +235,11 @@ export interface IStorage {
     vipSessions: number;
     musicRequests: number;
   }>;
+
+  // Dashboard widget operations
+  getDashboardWidgets(userId: string): Promise<DashboardWidget[]>;
+  updateDashboardWidgets(userId: string, widgets: Partial<DashboardWidget>[]): Promise<DashboardWidget[]>;
+  resetDashboardWidgets(userId: string): Promise<DashboardWidget[]>;
 
   // Analytics operations
   getCustomers(): Promise<any[]>;
@@ -1627,6 +1635,72 @@ export class DatabaseStorage implements IStorage {
       ORDER BY ms.next_due
     `);
     return results.rows || [];
+  }
+
+  // Dashboard widget operations
+  async getDashboardWidgets(userId: string): Promise<DashboardWidget[]> {
+    const widgets = await db.select().from(dashboardWidgets)
+      .where(eq(dashboardWidgets.userId, userId))
+      .orderBy(dashboardWidgets.position);
+    
+    if (widgets.length === 0) {
+      // Create default widgets for new users
+      return this.resetDashboardWidgets(userId);
+    }
+    
+    return widgets;
+  }
+
+  async updateDashboardWidgets(userId: string, widgets: Partial<DashboardWidget>[]): Promise<DashboardWidget[]> {
+    // Delete existing widgets and insert new ones (simpler than complex updates)
+    await db.delete(dashboardWidgets).where(eq(dashboardWidgets.userId, userId));
+    
+    const widgetsToInsert = widgets.map((widget, index) => ({
+      userId,
+      widgetType: widget.widgetType!,
+      position: index,
+      isVisible: widget.isVisible ?? true,
+      size: widget.size ?? 'medium',
+      settings: widget.settings ?? {},
+    }));
+
+    const insertedWidgets = await db.insert(dashboardWidgets)
+      .values(widgetsToInsert)
+      .returning();
+    
+    return insertedWidgets;
+  }
+
+  async resetDashboardWidgets(userId: string): Promise<DashboardWidget[]> {
+    // Delete existing widgets
+    await db.delete(dashboardWidgets).where(eq(dashboardWidgets.userId, userId));
+    
+    // Create default widget layout
+    const defaultWidgets = [
+      { widgetType: 'metrics_overview', position: 0, size: 'large' },
+      { widgetType: 'staff_working', position: 1, size: 'medium' },
+      { widgetType: 'dancers_fantasy', position: 2, size: 'medium' },
+      { widgetType: 'dancers_wiggles', position: 3, size: 'medium' },
+      { widgetType: 'quick_actions', position: 4, size: 'large' },
+      { widgetType: 'recent_tasks', position: 5, size: 'medium' },
+      { widgetType: 'music_requests', position: 6, size: 'medium' },
+      { widgetType: 'notifications', position: 7, size: 'small' },
+    ];
+
+    const widgetsToInsert = defaultWidgets.map(widget => ({
+      userId,
+      widgetType: widget.widgetType as any,
+      position: widget.position,
+      isVisible: true,
+      size: widget.size,
+      settings: {},
+    }));
+
+    const insertedWidgets = await db.insert(dashboardWidgets)
+      .values(widgetsToInsert)
+      .returning();
+    
+    return insertedWidgets;
   }
 }
 

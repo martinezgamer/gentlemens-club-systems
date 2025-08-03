@@ -74,6 +74,18 @@ export const eventTypeEnum = pgEnum("event_type", ["birthday", "bachelor_party",
 export const complianceStatusEnum = pgEnum("compliance_status", ["pending", "approved", "expired", "rejected"]);
 export const promotionTypeEnum = pgEnum("promotion_type", ["discount", "free_drink", "vip_upgrade", "special_rate"]);
 
+// Dashboard widget types enum
+export const widgetTypeEnum = pgEnum("widget_type", [
+  "metrics_overview",
+  "staff_working", 
+  "dancers_fantasy",
+  "dancers_wiggles",
+  "quick_actions",
+  "recent_tasks",
+  "music_requests",
+  "notifications"
+]);
+
 // Dancers - Independent Contractors (separate from staff)
 export const dancers = pgTable("dancers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -756,5 +768,29 @@ export type InsertRegistrationToken = z.infer<typeof insertRegistrationTokenSche
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+// Dashboard Widget Preferences - stores user's personalized dashboard layout
+export const dashboardWidgets = pgTable("dashboard_widgets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  widgetType: widgetTypeEnum("widget_type").notNull(),
+  position: integer("position").notNull().default(0),
+  isVisible: boolean("is_visible").notNull().default(true),
+  size: varchar("size").notNull().default("medium"), // small, medium, large
+  settings: jsonb("settings").default({}), // widget-specific settings
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+export const dashboardWidgetRelations = relations(dashboardWidgets, ({ one }) => ({
+  user: one(users, {
+    fields: [dashboardWidgets.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertDashboardWidgetSchema = createInsertSchema(dashboardWidgets);
+export type InsertDashboardWidget = z.infer<typeof insertDashboardWidgetSchema>;
+export type DashboardWidget = typeof dashboardWidgets.$inferSelect;
 
 
