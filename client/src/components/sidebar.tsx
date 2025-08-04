@@ -48,8 +48,8 @@ export default function Sidebar() {
     window.location.href = "/api/logout";
   };
 
-  const canAccessAdmin = (user as any)?.role === 'owner' || (user as any)?.role === 'manager' || (user as any)?.role === 'superuser';
-  const isSuperuser = (user as any)?.role === 'superuser';
+  const canAccessAdmin = user?.role === 'owner' || user?.role === 'manager' || user?.role === 'superuser';
+  const isSuperuser = user?.role === 'superuser';
 
   // Mobile header with hamburger menu
   if (isMobile) {
@@ -96,7 +96,7 @@ export default function Sidebar() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">FantasyCompanions</h3>
-                  <p className="text-xs text-gray-500 capitalize">{(user as any)?.role || 'Employee'}</p>
+                  <p className="text-xs text-gray-500 capitalize">{user?.role || 'Employee'}</p>
                 </div>
               </div>
               <Button
@@ -157,17 +157,17 @@ export default function Sidebar() {
           <div className="border-t border-gray-200 p-4">
             <div className="flex items-center space-x-3 mb-3">
               <Avatar className="w-8 h-8">
-                <AvatarImage src={(user as any)?.profileImageUrl} />
+                <AvatarImage src={user?.profileImageUrl} />
                 <AvatarFallback className="text-xs">
-                  {((user as any)?.firstName?.[0] || '') + ((user as any)?.lastName?.[0] || '')}
+                  {((user?.firstName?.[0] || '') + (user?.lastName?.[0] || ''))}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">
-                  {(user as any)?.firstName} {(user as any)?.lastName}
+                  {user?.firstName} {user?.lastName}
                 </p>
                 <p className="text-xs text-gray-500 truncate capitalize">
-                  {(user as any)?.role || 'Employee'}
+                  {user?.role || 'Employee'}
                 </p>
               </div>
             </div>
@@ -196,7 +196,7 @@ export default function Sidebar() {
           </div>
           <div>
             <h3 className="font-semibold text-gray-900">FantasyCompanions</h3>
-            <p className="text-xs text-gray-500 capitalize">{(user as any)?.role || 'Employee'}</p>
+            <p className="text-xs text-gray-500 capitalize">{user?.role || 'Employee'}</p>
           </div>
         </div>
       </div>
@@ -246,17 +246,17 @@ export default function Sidebar() {
         <div className="flex items-center space-x-3">
           <Avatar className="w-10 h-10">
             <AvatarImage 
-              src={(user as any)?.profileImageUrl || undefined} 
+              src={user?.profileImageUrl || undefined}
               alt="User profile"
               className="object-cover"
             />
             <AvatarFallback>
-              {(user as any)?.firstName?.[0]}{(user as any)?.lastName?.[0]}
+              {user?.firstName?.[0]}{user?.lastName?.[0]}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <p className="font-medium text-gray-900">
-              {(user as any)?.firstName} {(user as any)?.lastName}
+              {user?.firstName} {user?.lastName}
             </p>
             <p className="text-sm text-gray-500">Online</p>
           </div>

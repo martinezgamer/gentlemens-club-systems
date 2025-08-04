@@ -1,13 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-
-interface User {
-  id: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  role?: string;
-  clubLocation?: string;
-}
+import type { User } from "@/types";
 
 export function useAuth() {
   const { data: user, isLoading } = useQuery<User>({

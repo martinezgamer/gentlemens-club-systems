@@ -17,20 +17,20 @@ router.get("/dashboard/:clubLocation", async (req, res) => {
     }
 
     // Get dashboard metrics for the specific club
-    const activeStaff = await db.execute(sql`
+    const activeStaff: any = await db.execute(sql`
       SELECT COUNT(*) as count 
       FROM time_clock_entries tce 
       JOIN users u ON tce.user_id = u.id 
       WHERE tce.club_location = ${clubLocation} AND tce.is_active = true AND tce.clock_out_time IS NULL
     `);
 
-    const unreadMessages = await db.execute(sql`
+    const unreadMessages: any = await db.execute(sql`
       SELECT COUNT(*) as count 
       FROM messages 
       WHERE club_location = ${clubLocation} AND status = 'sent'
     `);
 
-    const recentActivity = await db.execute(sql`
+    const recentActivity: any = await db.execute(sql`
       SELECT COUNT(*) as count 
       FROM activity_logs al
       JOIN time_clock_entries tce ON al.time_clock_entry_id = tce.id
@@ -58,7 +58,7 @@ router.get("/dancer-applications/:clubLocation", async (req, res) => {
       return res.status(403).json({ message: "Access denied. Superuser role required." });
     }
 
-    const applications = await db.execute(sql`
+    const applications: any = await db.execute(sql`
       SELECT da.*, u.name as reviewer_name
       FROM dancer_applications da
       LEFT JOIN users u ON da.reviewed_by = u.id
@@ -83,7 +83,7 @@ router.get("/staff-notes/summary/:clubLocation", async (req, res) => {
       return res.status(403).json({ message: "Access denied. Superuser role required." });
     }
 
-    const summary = await db.execute(sql`
+    const summary: any = await db.execute(sql`
       SELECT COUNT(*) as recent
       FROM staff_notes sn
       JOIN users u ON sn.staff_id = u.id

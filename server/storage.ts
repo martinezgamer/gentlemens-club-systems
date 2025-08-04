@@ -47,6 +47,7 @@ import {
   type InsertDancer,
   type SelectDancerLineup,
   type InsertDancerLineup,
+  type StaffNote,
   notifications,
   type Notification,
   type InsertNotification,
@@ -67,8 +68,8 @@ export interface IStorage {
   updateUserRole(id: string, role: string): Promise<User>;
   updateStaffDetails(id: string, updates: Partial<User>): Promise<User>;
   getStaffByClub(clubLocation?: string): Promise<User[]>;
-  createStaffNote(note: { staffId: string; noteType: string; title: string; content: string; isPrivate?: boolean; createdBy: string; clubLocation: string; }): Promise<any>;
-  getStaffNotes(staffId?: string): Promise<any[]>;
+  createStaffNote(note: { staffId: string; noteType: string; title: string; content: string; isPrivate?: boolean; createdBy: string; clubLocation: string; }): Promise<StaffNote>;
+  getStaffNotes(staffId?: string): Promise<StaffNote[]>;
   
   // Task management with AI enhancements
   getAllTasks(): Promise<Task[]>;
@@ -111,6 +112,9 @@ export interface IStorage {
   createRegistrationToken(token: InsertRegistrationToken): Promise<RegistrationToken>;
   getRegistrationToken(token: string): Promise<RegistrationToken | undefined>;
   useRegistrationToken(id: string): Promise<RegistrationToken>;
+
+  // Activity
+  getRecentActivity(userId: string, limit?: number): Promise<ActivityLog[]>;
   
   // Time clock operations
   clockIn(entry: InsertTimeClockEntry): Promise<TimeClockEntry>;
@@ -316,20 +320,20 @@ export class DatabaseStorage implements IStorage {
       .orderBy(users.firstName);
   }
 
-  async createStaffNote(note: { 
-    staffId: string; 
-    noteType: string; 
-    title: string; 
-    content: string; 
-    isPrivate?: boolean; 
-    createdBy: string; 
-    clubLocation: "wiggles_gentlemens_club" | "fantasy_gentlemens_club"; 
-  }) {
+  async createStaffNote(note: {
+    staffId: string;
+    noteType: string;
+    title: string;
+    content: string;
+    isPrivate?: boolean;
+    createdBy: string;
+    clubLocation: "wiggles_gentlemens_club" | "fantasy_gentlemens_club";
+  }): Promise<StaffNote> {
     const [result] = await db.insert(staffNotes).values(note).returning();
     return result;
   }
 
-  async getStaffNotes(staffId?: string): Promise<any[]> {
+  async getStaffNotes(staffId?: string): Promise<StaffNote[]> {
     if (staffId) {
       return await db.select().from(staffNotes)
         .where(eq(staffNotes.staffId, staffId))
@@ -524,6 +528,14 @@ export class DatabaseStorage implements IStorage {
       .where(eq(registrationTokens.id, id))
       .returning();
     return result;
+  }
+
+  async getRecentActivity(userId: string, limit = 10): Promise<ActivityLog[]> {
+    return await db.select()
+      .from(activityLogs)
+      .where(eq(activityLogs.dancerId, userId))
+      .orderBy(desc(activityLogs.createdAt))
+      .limit(limit);
   }
 
   // Time clock operations

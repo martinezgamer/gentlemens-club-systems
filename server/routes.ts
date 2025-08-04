@@ -6,6 +6,8 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import * as aiService from "./ai-service";
 import { aiApplicationService } from "./ai-application-service";
 import superuserRoutes from "./routes/superuser";
+import authRoutes from "./routes/auth";
+import aiRoutes from "./routes/ai";
 import { insertFinancialRecordSchema, insertTimeClockSchema, insertTaskSchema, insertMessageSchema, insertMusicRequestSchema, insertScheduleSchema, insertDancerApplicationSchema, insertDancerSchema, insertDancerLineupSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -13,72 +15,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Custom login endpoint for superuser with case-insensitive authentication  
-  app.post('/api/auth/login', async (req: any, res) => {
-    try {
-      const { email, password } = req.body;
-      
-      if (!email || !password) {
-        return res.status(400).json({ message: "Email and password are required" });
-      }
-      
-      // Normalize email to lowercase for case-insensitive comparison
-      const normalizedEmail = email.toLowerCase().trim();
-      
-      // Check for the superuser account (case-insensitive)
-      if (normalizedEmail === process.env.SUPERUSER_EMAIL?.toLowerCase() && password === process.env.SUPERUSER_PASSWORD) {
-        // Create mock session for superuser that mimics OIDC structure
-        const mockUser = {
-          claims: {
-            sub: 'superuser-maritnez',
-            email: process.env.SUPERUSER_EMAIL,
-            first_name: 'Superuser',
-            last_name: 'Admin',
-            exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 days from now
-          },
-          access_token: 'mock-access-token',
-          refresh_token: 'mock-refresh-token',
-          expires_at: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
-        };
-        
-        // Store user in session like passport would
-        req.user = mockUser;
-        req.session.passport = { user: mockUser };
-        
-        // Ensure user exists in database
-        await storage.upsertUser({
-          id: 'superuser-maritnez',
-          email: process.env.SUPERUSER_EMAIL,
-          firstName: 'Superuser',
-          lastName: 'Admin',
-          role: 'superuser',
-          clubLocation: 'both_clubs',
-          isActive: true,
-          profileCompleted: true,
-        });
-        
-        const user = await storage.getUser('superuser-maritnez');
-        res.json({ success: true, user });
-      } else {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-    } catch (error) {
-      console.error("Login error:", error);
-      res.status(500).json({ message: "Login failed" });
-    }
-  });
-
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
+  // Modular routers
+  app.use('/api/auth', authRoutes);
+  app.use('/api/ai', isAuthenticated, aiRoutes);
 
   // Validation middleware for role-based authorization
   const requireRole = (allowedRoles: string[]) => {
@@ -1220,25 +1159,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("AI task insights error:", error);
       res.status(500).json({ message: "Failed to generate task insights" });
-    }
-  });
-
-  app.post('/api/ai/tasks/suggestions', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      const { clubLocation } = req.body;
-      
-      const recentActivity: any[] = []; // TODO: Gather recent activity data
-      const aiTaskService = await import('./ai-task-service');
-      const suggestions = await aiTaskService.generateTaskSuggestions(
-        clubLocation || user?.clubLocation || 'wiggles_gentlemens_club',
-        recentActivity
-      );
-      res.json(suggestions);
-    } catch (error) {
-      console.error("AI task suggestions error:", error);
-      res.status(500).json({ message: "Failed to generate task suggestions" });
     }
   });
 

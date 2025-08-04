@@ -112,6 +112,7 @@ Preferred communication style: Simple, everyday language.
 ### Environment Configuration
 - **DATABASE_URL**: PostgreSQL connection string (required)
 - **SESSION_SECRET**: Session encryption key (required)
+- **GEMINI_API_KEY**: Google Gemini API key (required for AI features)
 - **REPL_ID**: Replit environment identifier
 - **NODE_ENV**: Environment flag (development/production)
 

@@ -18,6 +18,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { format, addDays, startOfWeek } from "date-fns";
+import type { Schedule, User } from "@shared/types";
 
 interface ScheduleSlot {
   id: string;
@@ -161,14 +162,14 @@ function ScheduleSlotCard({
   );
 }
 
-export default function ScheduleWizard({ 
-  isOpen, 
+export default function ScheduleWizard({
+  isOpen,
   onClose,
-  onSave 
-}: { 
-  isOpen: boolean; 
+  onSave
+}: {
+  isOpen: boolean;
   onClose: () => void;
-  onSave: (schedules: any[]) => void;
+  onSave: (schedules: Schedule[]) => void;
 }) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -191,12 +192,12 @@ export default function ScheduleWizard({
   useEffect(() => {
     if (Array.isArray(allUsers)) {
       const staff = allUsers
-        .filter((user: any) => user.role !== 'owner' && user.role !== 'manager')
-        .map((user: any) => ({
+        .filter((user: User) => user.role !== 'owner' && user.role !== 'manager')
+        .map((user: User) => ({
           id: user.id,
           firstName: user.firstName,
           lastName: user.lastName,
-          role: user.role,
+          role: user.role || '',
           maxShiftsPerWeek: 5,
           currentShifts: 0
         }));
@@ -474,7 +475,7 @@ export default function ScheduleWizard({
                       <Label htmlFor="slot-type">Shift Type</Label>
                       <Select
                         value={newSlot.shiftType}
-                        onValueChange={(value: any) => setNewSlot(prev => ({
+                        onValueChange={(value: string) => setNewSlot(prev => ({
                           ...prev,
                           shiftType: value
                         }))}

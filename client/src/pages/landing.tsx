@@ -7,14 +7,33 @@ import { Building } from "lucide-react";
 
 export default function Landing() {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [token, setToken] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
   const handleLogin = () => {
     window.location.href = "/api/login";
   };
 
-  const handleRegistration = () => {
-    // TODO: Implement registration with token
-    window.location.href = "/api/login";
+  const handleRegistration = async () => {
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, firstName, lastName, email, password })
+      });
+      if (res.ok) {
+        window.location.href = '/dashboard';
+      } else {
+        const data = await res.json();
+        setError(data.message || 'Registration failed');
+      }
+    } catch {
+      setError('Registration failed');
+    }
   };
 
   return (
@@ -78,10 +97,12 @@ export default function Landing() {
                 <Label className="block text-sm font-medium text-gray-700 mb-2">
                   Registration Token
                 </Label>
-                <Input 
-                  type="text" 
-                  className="w-full" 
+                <Input
+                  type="text"
+                  className="w-full"
                   placeholder="Enter invitation token"
+                  value={token}
+                  onChange={e => setToken(e.target.value)}
                 />
               </div>
               
@@ -90,13 +111,13 @@ export default function Landing() {
                   <Label className="block text-sm font-medium text-gray-700 mb-2">
                     First Name
                   </Label>
-                  <Input type="text" className="w-full" />
+                  <Input type="text" className="w-full" value={firstName} onChange={e => setFirstName(e.target.value)} />
                 </div>
                 <div>
                   <Label className="block text-sm font-medium text-gray-700 mb-2">
                     Last Name
                   </Label>
-                  <Input type="text" className="w-full" />
+                  <Input type="text" className="w-full" value={lastName} onChange={e => setLastName(e.target.value)} />
                 </div>
               </div>
               
@@ -104,22 +125,26 @@ export default function Landing() {
                 <Label className="block text-sm font-medium text-gray-700 mb-2">
                   Email Address
                 </Label>
-                <Input type="email" className="w-full" />
+                <Input type="email" className="w-full" value={email} onChange={e => setEmail(e.target.value)} />
               </div>
               
               <div>
                 <Label className="block text-sm font-medium text-gray-700 mb-2">
                   Create Password
                 </Label>
-                <Input type="password" className="w-full" />
+                <Input type="password" className="w-full" value={password} onChange={e => setPassword(e.target.value)} />
               </div>
               
-              <Button 
+              <Button
                 onClick={handleRegistration}
                 className="w-full bg-success text-white py-3 px-4 rounded-lg font-medium hover:bg-green-600 transition-colors"
               >
                 Complete Registration
               </Button>
+
+              {error && (
+                <p className="text-sm text-red-500 text-center">{error}</p>
+              )}
               
               <div className="text-center">
                 <button 
