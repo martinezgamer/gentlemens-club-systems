@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { X, Brain, Lightbulb, AlertTriangle, TrendingUp, Zap, Music, Users, DollarSign, Clock } from 'lucide-react';
+import { generateSmartPlaylist } from '@/lib/music';
 // import { motion, AnimatePresence } from 'framer-motion';
 
 interface SmartNotification {
@@ -31,6 +32,8 @@ interface AISmartNotificationsProps {
 export function AISmartNotifications({ className }: AISmartNotificationsProps) {
   const [notifications, setNotifications] = useState<SmartNotification[]>([]);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [musicLoading, setMusicLoading] = useState(false);
+  const [musicError, setMusicError] = useState<string | null>(null);
 
   // Poll for new AI insights every 60 seconds
   const { data: liveInsights } = useQuery<LiveInsights>({
@@ -151,11 +154,22 @@ export function AISmartNotifications({ className }: AISmartNotificationsProps) {
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
-  const handleAction = (notification: SmartNotification) => {
-    // Handle different types of actionable notifications
+  const handleAction = async (notification: SmartNotification) => {
     if (notification.category === 'music' && notification.type === 'automation') {
-      // TODO: Integrate with music generation API
-      console.log('Generating AI music playlist...');
+      setMusicLoading(true);
+      setMusicError(null);
+      try {
+        await generateSmartPlaylist({
+          timeOfDay: 'prime_time',
+          clubLocation: 'wiggles_gentlemens_club',
+          crowdEnergy: 'high',
+          currentRequests: []
+        });
+      } catch (err) {
+        setMusicError('Failed to generate playlist');
+      } finally {
+        setMusicLoading(false);
+      }
     }
     dismissNotification(notification.id);
   };
@@ -169,8 +183,8 @@ export function AISmartNotifications({ className }: AISmartNotificationsProps) {
   return (
     <div className={`space-y-3 ${className}`}>
       {visibleNotifications.slice(0, 5).map((notification) => (
-        <Card 
-          key={notification.id} 
+        <Card
+          key={notification.id}
           className={`${getPriorityColor(notification.priority)} border-l-4 shadow-sm hover:shadow-md transition-shadow`}
         >
               <CardContent className="p-4">
@@ -227,6 +241,8 @@ export function AISmartNotifications({ className }: AISmartNotificationsProps) {
           </Badge>
         </div>
       )}
+      {musicLoading && <p className="text-xs text-gray-500">Generating playlist...</p>}
+      {musicError && <p className="text-xs text-red-500">{musicError}</p>}
     </div>
   );
 }

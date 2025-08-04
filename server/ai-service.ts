@@ -1,11 +1,15 @@
 import { GoogleGenAI } from "@google/genai";
 import { storage } from "./storage";
+import type { Schedule, User, FinancialRecord, Task, MusicRequest } from "@shared/types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+if (!process.env.GEMINI_API_KEY) {
+  throw new Error("GEMINI_API_KEY is not set");
+}
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // AI-Powered Schedule Optimization
-export async function optimizeSchedule(schedules: any[], staffData: any[]): Promise<{
-  optimizedSchedules: any[];
+export async function optimizeSchedule(schedules: Schedule[], staffData: User[]): Promise<{
+  optimizedSchedules: Schedule[];
   insights: string[];
   conflicts: string[];
   recommendations: string[];
@@ -56,7 +60,7 @@ export async function optimizeSchedule(schedules: any[], staffData: any[]): Prom
       conflicts: result.conflicts || [],
       recommendations: result.recommendations || []
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("AI Schedule optimization error:", error);
     return {
       optimizedSchedules: schedules,
@@ -68,7 +72,7 @@ export async function optimizeSchedule(schedules: any[], staffData: any[]): Prom
 }
 
 // AI-Powered Financial Analysis
-export async function analyzeFinancialData(financialRecords: any[]): Promise<{
+export async function analyzeFinancialData(financialRecords: FinancialRecord[]): Promise<{
   insights: string[];
   trends: string[];
   recommendations: string[];
@@ -118,7 +122,7 @@ export async function analyzeFinancialData(financialRecords: any[]): Promise<{
     });
 
     return JSON.parse(response.text || "{}");
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("AI Financial analysis error:", error);
     return {
       insights: ["AI financial analysis temporarily unavailable"],
@@ -131,7 +135,7 @@ export async function analyzeFinancialData(financialRecords: any[]): Promise<{
 }
 
 // AI-Powered Staff Performance Analysis
-export async function analyzeStaffPerformance(performanceData: any[]): Promise<{
+export async function analyzeStaffPerformance(performanceData: User[]): Promise<{
   insights: string[];
   topPerformers: string[];
   improvementAreas: { [staffId: string]: string[] };
@@ -176,7 +180,7 @@ export async function analyzeStaffPerformance(performanceData: any[]): Promise<{
     });
 
     return JSON.parse(response.text || "{}");
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("AI Performance analysis error:", error);
     return {
       insights: ["AI performance analysis temporarily unavailable"],
@@ -188,7 +192,7 @@ export async function analyzeStaffPerformance(performanceData: any[]): Promise<{
 }
 
 // AI-Powered Customer Insights
-export async function analyzeCustomerData(customerData: any[]): Promise<{
+export async function analyzeCustomerData(customerData: User[]): Promise<{
   insights: string[];
   preferences: { [customerId: string]: string[] };
   recommendations: string[];
@@ -240,7 +244,7 @@ export async function analyzeCustomerData(customerData: any[]): Promise<{
     });
 
     return JSON.parse(response.text || "{}");
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("AI Customer analysis error:", error);
     return {
       insights: ["AI customer analysis temporarily unavailable"],
@@ -256,7 +260,7 @@ export async function generateMusicPlaylist(context: {
   timeOfDay: string;
   crowdSize: number;
   specialEvents?: string[];
-  previousRequests?: any[];
+  previousRequests?: MusicRequest[];
 }): Promise<{
   playlist: string[];
   reasoning: string;
@@ -295,7 +299,7 @@ export async function generateMusicPlaylist(context: {
     });
 
     return JSON.parse(response.text || "{}");
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("AI Music generation error:", error);
     return {
       playlist: ["AI playlist generation temporarily unavailable"],
@@ -306,10 +310,10 @@ export async function generateMusicPlaylist(context: {
 }
 
 // AI-Powered Task Prioritization
-export async function prioritizeTasks(tasks: any[]): Promise<{
-  prioritizedTasks: any[];
+export async function prioritizeTasks(tasks: Task[]): Promise<{
+  prioritizedTasks: Task[];
   insights: string[];
-  urgentTasks: any[];
+  urgentTasks: Task[];
   recommendations: string[];
 }> {
   try {
@@ -349,7 +353,7 @@ export async function prioritizeTasks(tasks: any[]): Promise<{
       urgentTasks: result.urgentTasks || [],
       recommendations: result.recommendations || []
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("AI Task prioritization error:", error);
     return {
       prioritizedTasks: tasks,
@@ -364,11 +368,11 @@ export async function prioritizeTasks(tasks: any[]): Promise<{
 
 // AI-Powered Business Intelligence Dashboard
 export async function generateBusinessIntelligence(allData: {
-  schedules: any[];
-  financial: any[];
-  staff: any[];
-  customers: any[];
-  tasks: any[];
+  schedules: Schedule[];
+  financial: FinancialRecord[];
+  staff: User[];
+  customers: User[];
+  tasks: Task[];
 }): Promise<{
   keyInsights: string[];
   performanceMetrics: { [key: string]: number };
@@ -416,7 +420,7 @@ export async function generateBusinessIntelligence(allData: {
     });
 
     return JSON.parse(response.text || "{}");
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("AI Business intelligence error:", error);
     return {
       keyInsights: ["AI business analysis temporarily unavailable"],
@@ -492,7 +496,7 @@ export async function processChatMessage(message: string, context: string): Prom
     });
 
     return JSON.parse(response.text || "{}");
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("AI chat processing error:", error);
     return {
       response: "I'm analyzing your club operations and will provide insights shortly. In the meantime, check your dashboard for the latest metrics.",
@@ -597,9 +601,9 @@ export async function getLiveInsights(): Promise<{
     }
 
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Only log non-503 errors to reduce noise when API is overloaded
-    if (error.status !== 503) {
+    if ((error as any).status !== 503) {
       console.error("Live insights error:", error);
     }
     return {
@@ -625,7 +629,7 @@ export async function enhanceAnnouncement(data: {
   senderRole?: string;
 }) {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = ai.getGenerativeModel({ model: "gemini-pro" });
     
     const prompt = `As an AI assistant for a professional entertainment venue, enhance this announcement for optimal communication:
 
@@ -681,8 +685,8 @@ export async function enhanceAnnouncement(data: {
       };
     }
 
-  } catch (error: any) {
-    if (error.status !== 503) {
+  } catch (error: unknown) {
+    if ((error as any).status !== 503) {
       console.error("AI announcement enhancement error:", error);
     }
     
@@ -702,7 +706,7 @@ export async function enhanceAnnouncement(data: {
 // Message sentiment analysis for insights
 export async function analyzeMessageSentiment(messages: any[]) {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = ai.getGenerativeModel({ model: "gemini-pro" });
     
     const recentMessages = messages.slice(0, 20); // Analyze last 20 messages
     const messageText = recentMessages.map(m => `${m.subject}: ${m.content}`).join('\n');
@@ -737,8 +741,8 @@ export async function analyzeMessageSentiment(messages: any[]) {
       };
     }
 
-  } catch (error: any) {
-    if (error.status !== 503) {
+  } catch (error: unknown) {
+    if ((error as any).status !== 503) {
       console.error("Message sentiment analysis error:", error);
     }
     return {

@@ -1,7 +1,10 @@
 import { GoogleGenAI } from "@google/genai";
 import type { MusicRequest, User } from "@shared/schema";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+if (!process.env.GEMINI_API_KEY) {
+  throw new Error("GEMINI_API_KEY is not set");
+}
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // AI-Powered Music Recommendation Engine
 export async function generateSmartPlaylist(params: {
